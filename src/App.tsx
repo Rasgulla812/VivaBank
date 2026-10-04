@@ -62,6 +62,7 @@ function App() {
   const [showHint, setShowHint] = useState(false)
   const [examSource, setExamSource] = useState<'standard' | 'custom'>('standard')
   const [customSyllabus, setCustomSyllabus] = useState('')
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
 
   const currentPrompt = questionTemplates[(currentQuestion - 1) % questionTemplates.length](selectedSubject)
   const currentSubjectData = subjects.find(s => s.name === selectedSubject)
@@ -161,7 +162,7 @@ function App() {
   const overallScore = feedback ? Math.round((feedback.accuracy + feedback.depth + feedback.clarity) / 3) : 0
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${theme === 'light' ? 'theme-light' : ''}`}>
       {/* ── Top Bar ── */}
       <header className="topbar">
         <a className="brand" href="#top">
@@ -173,6 +174,15 @@ function App() {
         </a>
         <nav className="nav-actions">
           <a href="#subjects" className="nav-link">▣ Question Bank</a>
+          <button
+            className="btn-theme-toggle"
+            type="button"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {theme === 'dark' ? '☀ Light' : '☾ Dark'}
+          </button>
           <button className="btn-setup-key" type="button" onClick={() => setActiveDialog('key')}>
             ⌕ Setup Gemini Key <span className={`dot ${savedKey ? 'active' : ''}`} />
           </button>
