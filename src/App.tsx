@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { BookOpen } from 'lucide-react'
 import './App.css'
 
 /* ── Subject data ── */
@@ -38,9 +39,45 @@ const subjectHints: Record<string, string[]> = {
   'Web Engineering': ['DOM', 'API', 'REST', 'security', 'performance', 'HTTP'],
 }
 
+const questionBankQuestions = (subject: string, topic: string) => [
+  `What is ${topic}, and why is it important when studying ${subject}?`,
+  `Walk through how ${topic} works in ${subject}. Include the key steps, components, or concepts involved.`,
+  `Describe a practical scenario where ${topic} is used in ${subject}. What trade-offs or common mistakes should you consider?`,
+]
+
+const careerNotifications = [
+  {
+    category: 'Government exams',
+    message: 'Track UPSC Engineering Services (ESE) notifications and application windows.',
+    source: 'UPSC official portal',
+    url: 'https://upsc.gov.in/',
+  },
+  {
+    category: 'GATE & PSU',
+    message: 'Check the latest GATE announcements and PSU recruitment pathways for engineers.',
+    source: 'GATE official website',
+    url: 'https://gate2026.iitg.ac.in/',
+  },
+  {
+    category: 'Engineering roles',
+    message: 'Find government engineering vacancies and apprenticeship opportunities.',
+    source: 'National Career Service',
+    url: 'https://www.ncs.gov.in/',
+  },
+  {
+    category: 'Internships',
+    message: 'Explore technical internships and industry training opportunities for students.',
+    source: 'AICTE Internship Portal',
+    url: 'https://internship.aicte-india.org/',
+  },
+]
+
 function App() {
-  const [activeDialog, setActiveDialog] = useState<'viva' | 'key' | null>(null)
+  const [activeDialog, setActiveDialog] = useState<'viva' | 'key' | 'bank' | null>(null)
   const [selectedSubject, setSelectedSubject] = useState('Computer Networks')
+  const [selectedBankSubject, setSelectedBankSubject] = useState('Computer Networks')
+  const [selectedBankTopic, setSelectedBankTopic] = useState(subjects[0].topics[0])
+  const [bankTopicInput, setBankTopicInput] = useState('')
   const [questionCount, setQuestionCount] = useState(4)
   const [secondsPerQuestion, setSecondsPerQuestion] = useState(60)
   const [examStarted, setExamStarted] = useState(false)
@@ -63,11 +100,46 @@ function App() {
   const [examSource, setExamSource] = useState<'standard' | 'custom'>('standard')
   const [customSyllabus, setCustomSyllabus] = useState('')
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [notificationIndex, setNotificationIndex] = useState(0)
+  const [notificationsVisible, setNotificationsVisible] = useState(true)
 
   const currentPrompt = questionTemplates[(currentQuestion - 1) % questionTemplates.length](selectedSubject)
   const currentSubjectData = subjects.find(s => s.name === selectedSubject)
+  const bankSubjectData = subjects.find(s => s.name === selectedBankSubject)
+  const bankQuestions = questionBankQuestions(selectedBankSubject, selectedBankTopic)
+  const currentNotification = careerNotifications[notificationIndex]
 
   const closeDialog = () => setActiveDialog(null)
+
+  const openQuestionBank = () => {
+    const subject = subjects.find(s => s.name === selectedBankSubject) ?? subjects[0]
+    setSelectedBankTopic(subject.topics[0])
+    setBankTopicInput('')
+    setActiveDialog('bank')
+  }
+
+  const selectBankSubject = (subjectName: string) => {
+    const subject = subjects.find(s => s.name === subjectName)
+    if (!subject) return
+    setSelectedBankSubject(subject.name)
+    setSelectedBankTopic(subject.topics[0])
+    setBankTopicInput('')
+  }
+
+  useEffect(() => {
+    if (!notificationsVisible) return
+    const rotation = window.setInterval(() => {
+      setNotificationIndex((index) => (index + 1) % careerNotifications.length)
+    }, 8000)
+    return () => window.clearInterval(rotation)
+  }, [notificationsVisible])
+
+  const generateBankQuestions = () => {
+    const topic = bankTopicInput.trim()
+    if (!topic) return
+    setSelectedBankTopic(topic)
+    setBankTopicInput('')
+  }
 
   const startExam = () => {
     setCurrentQuestion(1)
@@ -166,14 +238,15 @@ function App() {
       {/* ── Top Bar ── */}
       <header className="topbar">
         <a className="brand" href="#top">
-          <div className="brand-icon">✧</div>
+          <div className="brand-icon" aria-hidden="true">
+            <BookOpen size={21} strokeWidth={2.2} />
+          </div>
           <div className="brand-text">
-            <div className="brand-name">VIVA<span>FORGE</span></div>
-            <div className="brand-sub">Adaptive Practical Exam Simulator</div>
+            <div className="brand-name">Viva<span>Bank</span></div>
           </div>
         </a>
         <nav className="nav-actions">
-          <a href="#subjects" className="nav-link">▣ Question Bank</a>
+          <button className="nav-link" type="button" onClick={openQuestionBank}>▣ Question Bank</button>
           <button
             className="btn-theme-toggle"
             type="button"
@@ -191,6 +264,51 @@ function App() {
           </button>
         </nav>
       </header>
+
+      {notificationsVisible && (
+        <aside className="notification-bar" aria-label="Career and exam notifications">
+          <div className="notification-content">
+            <span className="notification-badge">● Updates</span>
+            <span className="notification-category">{currentNotification.category}</span>
+            <span className="notification-message">{currentNotification.message}</span>
+            <a
+              className="notification-link"
+              href={currentNotification.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {currentNotification.source} ↗
+            </a>
+          </div>
+          <div className="notification-actions">
+            <button
+              type="button"
+              className="notification-arrow"
+              onClick={() => setNotificationIndex((index) => (index - 1 + careerNotifications.length) % careerNotifications.length)}
+              aria-label="Previous notification"
+            >
+              ←
+            </button>
+            <span className="notification-count">{notificationIndex + 1}/{careerNotifications.length}</span>
+            <button
+              type="button"
+              className="notification-arrow"
+              onClick={() => setNotificationIndex((index) => (index + 1) % careerNotifications.length)}
+              aria-label="Next notification"
+            >
+              →
+            </button>
+            <button
+              type="button"
+              className="notification-close"
+              onClick={() => setNotificationsVisible(false)}
+              aria-label="Dismiss notifications"
+            >
+              ×
+            </button>
+          </div>
+        </aside>
+      )}
 
       {/* ── Subject Selection ── */}
       <section className="subject-section" id="subjects">
@@ -380,9 +498,79 @@ function App() {
       {/* ── Configuration / API Key Dialog ── */}
       {activeDialog && (
         <div className="dialog-backdrop" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && closeDialog()}>
-          <section className={`dialog ${activeDialog === 'key' ? 'api-dialog' : ''}`} role="dialog" aria-modal="true">
+          <section className={`dialog ${activeDialog === 'key' ? 'api-dialog' : activeDialog === 'bank' ? 'question-bank-dialog' : ''}`} role="dialog" aria-modal="true">
             <button className="dialog-close" type="button" onClick={closeDialog}>×</button>
-            {activeDialog === 'viva' ? (
+            {activeDialog === 'bank' ? (
+              <>
+                <div className="dialog-icon">▣</div>
+                <h2 className="dialog-title">Question Bank</h2>
+                <p className="dialog-subtitle">Choose a subject and topic to practice focused questions.</p>
+
+                <div className="question-bank-subjects" aria-label="Question bank subjects">
+                  {subjects.map((subject) => (
+                    <button
+                      type="button"
+                      key={subject.name}
+                      className={`question-bank-subject ${selectedBankSubject === subject.name ? 'selected' : ''}`}
+                      onClick={() => selectBankSubject(subject.name)}
+                    >
+                      {subject.code}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="question-bank-topic-label">Topics in {selectedBankSubject}</div>
+                <div className="question-bank-topics">
+                  {bankSubjectData?.topics.map((topic) => (
+                    <button
+                      type="button"
+                      key={topic}
+                      className={`question-bank-topic ${selectedBankTopic === topic ? 'selected' : ''}`}
+                      onClick={() => setSelectedBankTopic(topic)}
+                    >
+                      {topic}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="question-bank-custom-topic">
+                  <label className="field-label" htmlFor="question-bank-topic">Need another topic?</label>
+                  <div className="question-bank-topic-input">
+                    <input
+                      id="question-bank-topic"
+                      className="text-input"
+                      type="text"
+                      value={bankTopicInput}
+                      onChange={(e) => setBankTopicInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') generateBankQuestions() }}
+                      placeholder="Type a topic, concept, or chapter..."
+                    />
+                    <button
+                      className="question-bank-generate"
+                      type="button"
+                      onClick={generateBankQuestions}
+                      disabled={!bankTopicInput.trim()}
+                    >
+                      Generate
+                    </button>
+                  </div>
+                </div>
+
+                <div className="question-bank-selected-topic">Questions for: <strong>{selectedBankTopic}</strong></div>
+                <div className="question-bank-list">
+                  {bankQuestions.map((question, index) => (
+                    <div className="question-bank-item" key={question}>
+                      <span className="question-bank-number">{index + 1}</span>
+                      <span>{question}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <button className="btn-begin-exam" type="button" onClick={closeDialog}>
+                  Done with Question Bank
+                </button>
+              </>
+            ) : activeDialog === 'viva' ? (
               <>
                 <div className="dialog-icon">⚙</div>
                 <h2 className="dialog-title">Configure Your Viva Examination</h2>
