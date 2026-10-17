@@ -184,7 +184,7 @@ const MONTH_SHORT: Record<string, number> = {
   Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11,
 }
 
-function buildCalendarGrid(day: number, monthShort: string, year: number) {
+function buildCalendarGrid(monthShort: string, year: number) {
   const monthIdx = MONTH_SHORT[monthShort] ?? 9
   const firstDay = new Date(year, monthIdx, 1).getDay() // 0=Sun
   const daysInMonth = new Date(year, monthIdx + 1, 0).getDate()
@@ -199,7 +199,8 @@ function downloadICS(p: { name: string; subject: string; day: string; month: str
   const mm = String(monthIdx + 1).padStart(2, '0')
   const dd = p.day.padStart(2, '0')
   const [timePart, meridiem] = p.time.split(' ')
-  let [hh, min] = timePart.split(':').map(Number)
+  const [hhValue, min] = timePart.split(':').map(Number)
+  let hh = hhValue
   if (meridiem === 'PM' && hh !== 12) hh += 12
   if (meridiem === 'AM' && hh === 12) hh = 0
   const startH = String(hh).padStart(2, '0')
@@ -414,7 +415,7 @@ export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateNa
             {savedIds.size > 0 ? (
               <div className="db-practicals-list">
                 {practicals.filter((p) => savedIds.has(p.id)).map((p) => {
-                  const { cells, monthName } = buildCalendarGrid(Number(p.day), p.month, YEAR)
+                  const { cells, monthName } = buildCalendarGrid(p.month, YEAR)
                   const isOpen = calendarOpenId === p.id
                   return (
                     <div
@@ -499,7 +500,7 @@ export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateNa
                 <div className="db-browse-panel-title">All Practicals — tap 📅 to save a date</div>
                 <div className="db-practicals-list">
                   {practicals.map((p) => {
-                    const { cells, monthName } = buildCalendarGrid(Number(p.day), p.month, YEAR)
+                    const { cells, monthName } = buildCalendarGrid(p.month, YEAR)
                     const isOpen  = calendarOpenId === p.id
                     const isSaved = savedIds.has(p.id)
                     return (

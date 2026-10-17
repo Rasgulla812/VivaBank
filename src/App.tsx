@@ -90,7 +90,7 @@ const questionBankQuestions = (subject: string, topic: string, rotation = 0) => 
       `Describe a real network scenario involving ${topic}. Trace the data flow and identify one likely failure and its diagnosis.`,
       `State two common misconceptions about ${topic} and correct them using precise networking terminology.`,
     ]
-    return topicQuestions.map((question, index) => topicQuestions[(index + rotation) % topicQuestions.length])
+    return topicQuestions.map((_, index) => topicQuestions[(index + rotation) % topicQuestions.length])
   }
 
   return [

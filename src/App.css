@@ -677,6 +677,16 @@
   line-height: 1.5;
 }
 
+.question-bank-type {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--purple-light);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
 .question-bank-number {
   flex: 0 0 24px;
   display: grid;
