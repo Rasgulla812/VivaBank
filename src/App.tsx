@@ -1,10 +1,21 @@
 import { useCallback, useEffect, useState } from 'react'
 import { BookOpen } from 'lucide-react'
 import './App.css'
+import Dashboard from './Dashboard'
 
 /* ── Subject data ── */
+const computerNetworksTopics = [
+  'Introduction, OSI & TCP/IP',
+  'Physical Layer & Transmission',
+  'Data Link Layer & LLC',
+  'MAC & Shared Ethernet',
+  'Network Layer & Routing',
+  'Transport Layer: UDP/TCP',
+  'Application Layer & Sockets',
+]
+
 const subjects = [
-  { name: 'Computer Networks', code: 'CS301', icon: '⚙', color: 'purple', desc: 'Protocol suites, TCP/IP architecture, ARP, Routing algorithms, and Socket programming.', topics: ['ARP & Layer 2', 'TCP/UDP Protocols', 'Routing Protocols (BGP/OSPF)'] },
+  { name: 'Computer Networks', code: 'CS301', icon: '⚙', color: 'purple', desc: 'Data communications, layered architectures, transmission, reliable delivery, routing, TCP/IP, and application protocols.', topics: computerNetworksTopics },
   { name: 'Data Structures & Algorithms', code: 'CS201', icon: '</>', color: 'blue', desc: 'Trees, Graphs, Dynamic Programming, Complexity Analysis, Sorting, and Searching.', topics: ['Binary Search Trees', 'Graph Algorithms', 'Dynamic Programming'] },
   { name: 'Operating Systems', code: 'CS302', icon: '⊞', color: 'green', desc: 'Process management, Deadlocks, Paging, Virtual Memory, Concurrency, and System Calls.', topics: ['Deadlock Detection & Prevention', 'Virtual Memory & Paging', 'Threads & Synchronization'] },
   { name: 'Database Systems', code: 'CS303', icon: '▤', color: 'pink', desc: 'Relational model, SQL optimization, B+ Tree indexing, Normalization, and ACID transactions.', topics: ['SQL Joins & Optimization', 'B+ Tree Indexing', 'Normalization Forms'] },
@@ -30,8 +41,38 @@ const questionTemplates = [
   (subject: string) => `Given a real-world scenario in ${subject}, walk me through how you would debug a critical failure.`,
 ]
 
+const computerNetworksQuestions = [
+  'Explain why layered network architectures are used. Compare the responsibilities of OSI and TCP/IP models.',
+  'Differentiate analog and digital data, and explain how channel capacity is affected by bandwidth, noise, and signal levels.',
+  'Compare guided and wireless transmission media. When is line-of-sight propagation required?',
+  'A channel has a bandwidth of 3 kHz and an SNR of 30 dB. Use Shannon capacity to estimate its maximum data rate.',
+  'Compare NRZ-L, Manchester, and differential Manchester line coding with respect to synchronization and bandwidth.',
+  'Explain PCM and delta modulation. What causes quantization noise and slope-overload distortion?',
+  'Compare asynchronous and synchronous transmission. Why is framing needed for reliable data-link communication?',
+  'Given a received bit sequence and a generator polynomial, demonstrate CRC error detection and state when the frame is rejected.',
+  'Compare Stop-and-Wait, Go-Back-N, and Selective Repeat ARQ in terms of windows, retransmissions, and link utilization.',
+  'Explain HDLC frame fields and compare PPP framing and link-control negotiation.',
+  'Compare bus, star, and ring topologies. Which failure modes are most important in each?',
+  'Explain TDMA, FDMA, CSMA, and the difference between CSMA/CD and CSMA/CA.',
+  'A 100 Mbps Ethernet link has a 10 ms round-trip propagation delay. Calculate the bandwidth-delay product and explain its meaning.',
+  'Explain ARP, RARP, ICMP, and NAT, and describe where each operates in the TCP/IP stack.',
+  'Compare IPv4 and IPv6 addressing and headers. Why was IPv6 introduced?',
+  'A /24 network must be divided into at least six equal subnets. Determine the new prefix and usable hosts per subnet.',
+  'Explain classful addressing, classless addressing, CIDR, and VLSM with a suitable allocation example.',
+  'Compare distance-vector and link-state routing. Explain count-to-infinity and the role of Dijkstra’s algorithm.',
+  'Compare UDP and TCP headers and explain when an application should prefer each transport protocol.',
+  'Walk through TCP connection establishment, reliable delivery, flow control, and connection termination.',
+  'Explain TCP congestion control, including slow start, congestion avoidance, fast retransmit, and fast recovery.',
+  'A TCP sender has a congestion window of 16 MSS when loss is detected by timeout. What happens to cwnd and ssthresh under classic TCP congestion control?',
+  'Explain socket programming using the sequence of calls for a TCP server and a TCP client.',
+  'Compare DNS, SMTP, FTP, and HTTP by purpose, transport usage, and typical request-response behavior.',
+  'A GATE-style question asks which layer handles end-to-end reliability. Justify the answer and distinguish it from link-level reliability.',
+  'An interview asks why Ethernet uses a minimum frame size. Relate your answer to collision detection and propagation delay.',
+  'An objective exam gives a private IPv4 address and asks whether it is routable on the public Internet. Explain the role of NAT.',
+]
+
 const subjectHints: Record<string, string[]> = {
-  'Computer Networks': ['network', 'protocol', 'packet', 'router', 'address', 'DNS', 'TCP'],
+  'Computer Networks': ['layer', 'protocol', 'packet', 'frame', 'router', 'address', 'TCP', 'UDP', 'DNS', 'ARP'],
   'Data Structures & Algorithms': ['algorithm', 'complexity', 'data structure', 'tree', 'graph', 'sort'],
   'Operating Systems': ['process', 'memory', 'kernel', 'thread', 'scheduling', 'deadlock'],
   'Database Systems': ['database', 'query', 'table', 'transaction', 'index', 'SQL', 'normalization'],
@@ -39,11 +80,29 @@ const subjectHints: Record<string, string[]> = {
   'Web Engineering': ['DOM', 'API', 'REST', 'security', 'performance', 'HTTP'],
 }
 
-const questionBankQuestions = (subject: string, topic: string) => [
-  `What is ${topic}, and why is it important when studying ${subject}?`,
-  `Walk through how ${topic} works in ${subject}. Include the key steps, components, or concepts involved.`,
-  `Describe a practical scenario where ${topic} is used in ${subject}. What trade-offs or common mistakes should you consider?`,
-]
+const questionBankQuestions = (subject: string, topic: string, rotation = 0) => {
+  if (subject === 'Computer Networks') {
+    const topicQuestions = [
+      `Explain the key concepts in ${topic} and relate them to the correct network layer or sub-layer.`,
+      `Compare two protocols or techniques from ${topic}. State their use cases, limitations, and exam-relevant differences.`,
+      `Solve a numerical problem based on ${topic}: calculate the relevant rate, delay, capacity, address range, window, or efficiency, showing each formula and step.`,
+      `A competitive-exam question tests ${topic}. Frame the likely options, identify the correct answer, and explain why the distractors are wrong.`,
+      `Describe a real network scenario involving ${topic}. Trace the data flow and identify one likely failure and its diagnosis.`,
+      `State two common misconceptions about ${topic} and correct them using precise networking terminology.`,
+    ]
+    return topicQuestions.map((question, index) => topicQuestions[(index + rotation) % topicQuestions.length])
+  }
+
+  return [
+    `What is ${topic}, and why is it important when studying ${subject}?`,
+    `Walk through how ${topic} works in ${subject}. Include the key steps, components, or concepts involved.`,
+    `Describe a practical scenario where ${topic} is used in ${subject}. What trade-offs or common mistakes should you consider?`,
+  ]
+}
+
+function shuffle<T>(items: T[]) {
+  return [...items].sort(() => Math.random() - 0.5)
+}
 
 const careerNotifications = [
   {
@@ -73,11 +132,13 @@ const careerNotifications = [
 ]
 
 function App() {
+  const [activeView, setActiveView] = useState<'dashboard' | 'practice'>('dashboard')
   const [activeDialog, setActiveDialog] = useState<'viva' | 'key' | 'bank' | null>(null)
   const [selectedSubject, setSelectedSubject] = useState('Computer Networks')
   const [selectedBankSubject, setSelectedBankSubject] = useState('Computer Networks')
   const [selectedBankTopic, setSelectedBankTopic] = useState(subjects[0].topics[0])
   const [bankTopicInput, setBankTopicInput] = useState('')
+  const [bankRotation, setBankRotation] = useState(0)
   const [questionCount, setQuestionCount] = useState(4)
   const [secondsPerQuestion, setSecondsPerQuestion] = useState(60)
   const [examStarted, setExamStarted] = useState(false)
@@ -102,11 +163,12 @@ function App() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [notificationIndex, setNotificationIndex] = useState(0)
   const [notificationsVisible, setNotificationsVisible] = useState(true)
+  const [examQuestions, setExamQuestions] = useState<string[]>([])
 
-  const currentPrompt = questionTemplates[(currentQuestion - 1) % questionTemplates.length](selectedSubject)
+  const currentPrompt = examQuestions[currentQuestion - 1] ?? questionTemplates[(currentQuestion - 1) % questionTemplates.length](selectedSubject)
   const currentSubjectData = subjects.find(s => s.name === selectedSubject)
   const bankSubjectData = subjects.find(s => s.name === selectedBankSubject)
-  const bankQuestions = questionBankQuestions(selectedBankSubject, selectedBankTopic)
+  const bankQuestions = questionBankQuestions(selectedBankSubject, selectedBankTopic, bankRotation)
   const currentNotification = careerNotifications[notificationIndex]
 
   const closeDialog = () => setActiveDialog(null)
@@ -124,6 +186,7 @@ function App() {
     setSelectedBankSubject(subject.name)
     setSelectedBankTopic(subject.topics[0])
     setBankTopicInput('')
+    setBankRotation((rotation) => rotation + 1)
   }
 
   useEffect(() => {
@@ -139,15 +202,20 @@ function App() {
     if (!topic) return
     setSelectedBankTopic(topic)
     setBankTopicInput('')
+    setBankRotation((rotation) => rotation + 1)
   }
 
   const startExam = () => {
+    const prompts = selectedSubject === 'Computer Networks'
+      ? shuffle(computerNetworksQuestions).slice(0, Math.max(questionCount, 7))
+      : shuffle(questionTemplates).map((template) => template(selectedSubject))
     setCurrentQuestion(1)
     setTimeRemaining(secondsPerQuestion)
     setExamComplete(false)
     setAnswer('')
     setFeedback(null)
     setShowHint(false)
+    setExamQuestions(prompts)
     setExamStarted(true)
     closeDialog()
   }
@@ -246,6 +314,20 @@ function App() {
           </div>
         </a>
         <nav className="nav-actions">
+          <button
+            className={`nav-link${activeView === 'dashboard' ? ' nav-link-active' : ''}`}
+            type="button"
+            onClick={() => setActiveView('dashboard')}
+          >
+            ⊞ Dashboard
+          </button>
+          <button
+            className={`nav-link${activeView === 'practice' ? ' nav-link-active' : ''}`}
+            type="button"
+            onClick={() => setActiveView('practice')}
+          >
+            ◈ Practice
+          </button>
           <button className="nav-link" type="button" onClick={openQuestionBank}>▣ Question Bank</button>
           <button
             className="btn-theme-toggle"
@@ -310,33 +392,41 @@ function App() {
         </aside>
       )}
 
-      {/* ── Subject Selection ── */}
-      <section className="subject-section" id="subjects">
-        <div className="section-header">
-          <div>
-            <h2>Select Subject to Practice</h2>
-            <p>Choose a course syllabus to initiate your viva examination</p>
+      {/* ── Dashboard or Practice View ── */}
+      {activeView === 'dashboard' ? (
+        <Dashboard
+          candidateName={candidateName}
+          onStartViva={(subject) => { setSelectedSubject(subject); setActiveDialog('viva') }}
+          onOpenQuestionBank={openQuestionBank}
+        />
+      ) : (
+        <section className="subject-section" id="subjects">
+          <div className="section-header">
+            <div>
+              <h2>Select Subject to Practice</h2>
+              <p>Choose a course syllabus to initiate your viva examination</p>
+            </div>
+            <a href="#custom" className="custom-upload-link">Custom Syllabus / Code Upload →</a>
           </div>
-          <a href="#custom" className="custom-upload-link">Custom Syllabus / Code Upload →</a>
-        </div>
-        <div className="subjects-grid">
-          {subjects.map((subject) => (
-            <button type="button" key={subject.name} className="subject-card" onClick={() => { setSelectedSubject(subject.name); setActiveDialog('viva') }}>
-              <div className="card-top">
-                <div className={`card-icon ${subject.color}`}>{subject.icon}</div>
-                <span className="card-code">{subject.code}</span>
-              </div>
-              <div className="card-title">{subject.name}</div>
-              <div className="card-desc">{subject.desc}</div>
-              <div className="card-topics-label">KEY TOPICS</div>
-              <div className="card-topics">
-                {subject.topics.map(t => <span key={t} className="topic-pill">{t}</span>)}
-              </div>
-              <div className="card-start">Start {subject.code} Viva <span className="arrow">→</span></div>
-            </button>
-          ))}
-        </div>
-      </section>
+          <div className="subjects-grid">
+            {subjects.map((subject) => (
+              <button type="button" key={subject.name} className="subject-card" onClick={() => { setSelectedSubject(subject.name); setActiveDialog('viva') }}>
+                <div className="card-top">
+                  <div className={`card-icon ${subject.color}`}>{subject.icon}</div>
+                  <span className="card-code">{subject.code}</span>
+                </div>
+                <div className="card-title">{subject.name}</div>
+                <div className="card-desc">{subject.desc}</div>
+                <div className="card-topics-label">KEY TOPICS</div>
+                <div className="card-topics">
+                  {subject.topics.map(t => <span key={t} className="topic-pill">{t}</span>)}
+                </div>
+                <div className="card-start">Start {subject.code} Viva <span className="arrow">→</span></div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Exam Room ── */}
       {examStarted && (
@@ -504,7 +594,7 @@ function App() {
               <>
                 <div className="dialog-icon">▣</div>
                 <h2 className="dialog-title">Question Bank</h2>
-                <p className="dialog-subtitle">Choose a subject and topic to practice focused questions.</p>
+                <p className="dialog-subtitle">Computer Networks questions include concepts, numericals, and competitive-exam patterns from the course syllabus.</p>
 
                 <div className="question-bank-subjects" aria-label="Question bank subjects">
                   {subjects.map((subject) => (
@@ -561,7 +651,14 @@ function App() {
                   {bankQuestions.map((question, index) => (
                     <div className="question-bank-item" key={question}>
                       <span className="question-bank-number">{index + 1}</span>
-                      <span>{question}</span>
+                      <span>
+                        <span className="question-bank-type">
+                          {selectedBankSubject === 'Computer Networks'
+                            ? ['Concept', 'Compare', 'Numerical', 'Competitive', 'Scenario', 'Revision'][index]
+                            : 'Practice'}
+                        </span>
+                        {question}
+                      </span>
                     </div>
                   ))}
                 </div>
