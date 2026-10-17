@@ -329,15 +329,15 @@ function validateGeneratedQuestions(value: unknown): GeneratedQuestion[] {
     }).slice(0, 10)
   }
 
-async function generateWithGemini(apiKey: string, request: string): Promise<GeneratedQuestion[]> {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+async function generateWithGemini(request: string): Promise<GeneratedQuestion[]> {
+    const response = await fetch('/api/generate-questions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: request }] }] }),
+      body: JSON.stringify({ prompt: request }),
     })
     if (!response.ok) throw new Error(`AI generation failed (${response.status}).`)
     const payload: unknown = await response.json()
-    const text = (payload as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }).candidates?.[0]?.content?.parts?.[0]?.text
+    const text = (payload as { text?: string }).text
     if (!text) throw new Error('The AI returned an empty response.')
     const json = text.match(/\[[\s\S]*\]/)?.[0]
     if (!json) throw new Error('The AI response was not valid JSON.')
@@ -492,7 +492,6 @@ function App() {
     strengths: string[]; gaps: string[];
     commentary: string; action: string;
   } | null>(null)
-  const [apiKey, setApiKey] = useState('')
   const [savedKey, setSavedKey] = useState(false)
   const [candidateName, setCandidateName] = useState('Alex River')
   const [selectedExaminer, setSelectedExaminer] = useState(0)
@@ -623,17 +622,12 @@ function App() {
   }
 
   const generateVivaQuestions = async () => {
-    if (!apiKey.trim()) {
-      setGenerationError('Add your Gemini API key before generating AI questions.')
-      setGenerationStatus('error')
-      return
-    }
     setGenerationStatus('loading')
     setGenerationError('')
     const syllabus = examSource === 'custom' ? customSyllabus.trim() : selectedSubject
     const request = `Return only a JSON array. Generate ${Math.max(questionCount, 4)} ${vivaQuestionType} viva questions for ${syllabus}, unit ${vivaUnit}, experiment ${vivaExperiment}, difficulty ${vivaDifficulty}. Each object must contain question, type (${vivaQuestionType}), modelAnswer, and rubric (an array of at least 2 concrete scoring criteria). Stay within computer networking or the supplied syllabus. Do not invent prerequisites or facts.`
     try {
-      const generated = await generateWithGemini(apiKey.trim(), request)
+      const generated = await generateWithGemini(request)
       setGeneratedQuestions(generated)
       setGenerationStatus('idle')
     } catch (error) {
@@ -1221,12 +1215,12 @@ function App() {
               <>
                 <div className="dialog-icon">🔑</div>
                 <h2 className="dialog-title">Setup Gemini Key</h2>
-                <p className="dialog-subtitle">Your key stays in this browser and powers the adaptive examiner when the API is connected.</p>
+                <p className="dialog-subtitle">Gemini is connected through a server-side proxy. The API key is never sent to or bundled into this browser app.</p>
                 <div className="field-group">
-                  <label className="field-label"><span className="icon">🔐</span> Gemini API key</label>
-                  <input className="text-input" type="password" value={apiKey} onChange={(e) => { setApiKey(e.target.value); setSavedKey(false) }} placeholder="AIza..." />
+                  <span className="field-label"><span className="icon">🔐</span> Gemini API configuration</span>
+                  <p className="ai-generated-note">The server reads <code>GEMINI_API_KEY</code> from its private environment. Never paste keys into source files or commit them to GitHub.</p>
                 </div>
-                <button className="btn-proceed" type="button" onClick={() => setSavedKey(true)}>{savedKey ? '✓ Key saved for this session' : 'Save Gemini key'}</button>
+                <button className="btn-proceed" type="button" onClick={() => setSavedKey(true)}>{savedKey ? '✓ Secure proxy configured' : 'Confirm secure configuration'}</button>
               </>
             )}
           </section>
