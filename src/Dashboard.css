@@ -294,6 +294,25 @@
   );
 }
 
+.app-shell.theme-light .db-subject-card {
+  border-color: #DCC8BE;
+  box-shadow: 0 8px 24px rgba(90, 31, 43, 0.08);
+}
+
+.app-shell.theme-light .db-subject-card:hover {
+  border-color: #B77924;
+  box-shadow: 0 14px 32px rgba(90, 31, 43, 0.14);
+}
+
+.app-shell.theme-light .db-subject-card-overlay {
+  background: linear-gradient(
+    to top,
+    rgba(28, 17, 21, 0.78) 0%,
+    rgba(28, 17, 21, 0.34) 52%,
+    rgba(28, 17, 21, 0.04) 100%
+  );
+}
+
 .db-subject-card-meta {
   position: absolute;
   top: 10px;
@@ -466,6 +485,16 @@
 .db-recent-score.needs-work {
   color: var(--orange-primary);
   background: var(--orange-bg);
+}
+
+.app-shell .db-recent-icon {
+  background: #5A1F2B !important;
+}
+
+.app-shell.theme-light .db-recent-score.good,
+.app-shell.theme-light .db-recent-score.needs-work {
+  color: #8A5A16;
+  background: #FFF0D5;
 }
 
 /* ── Upcoming Practicals ── */
@@ -670,7 +699,7 @@
 .db-progress-track {
   height: 5px;
   border-radius: 3px;
-  background: rgba(255,255,255,0.06);
+  background: #493039;
   overflow: hidden;
 }
 
@@ -910,6 +939,20 @@
 
 .db-quick-btn:hover .db-quick-btn-label { color: var(--text-primary); }
 
+.db-quick-btn-icon {
+  color: #5A1F2B;
+}
+
+.app-shell:not(.theme-light) .db-quick-btn-icon {
+  background: #3A242B !important;
+  color: #F7F0ED;
+}
+
+.app-shell.theme-light .db-quick-btn-icon {
+  background: #FFF0D5 !important;
+  color: #5A1F2B;
+}
+
 /* ── Animations ── */
 @keyframes db-fade-in {
   from { opacity: 0; transform: translateY(12px); }
@@ -945,6 +988,118 @@
 
 @media (max-width: 480px) {
   .db-subjects-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Premium navy visual system ── */
+.dashboard-shell {
+  max-width: 1280px;
+}
+
+.dashboard-title-block h1 {
+  letter-spacing: -1.4px;
+}
+
+.dashboard-meta,
+.db-panel,
+.db-subject-card,
+.db-practical-item,
+.db-recent-item,
+.db-quick-btn {
+  border-color: rgba(148, 163, 184, 0.2);
+  box-shadow: 0 8px 24px rgba(2, 12, 27, 0.18);
+}
+
+.dashboard-meta-avatar {
+  background: #2563eb;
+}
+
+.continue-card.primary,
+.continue-card.secondary {
+  background: #112746;
+  border-color: rgba(96, 165, 250, 0.28);
+  box-shadow: 0 10px 28px rgba(2, 12, 27, 0.22);
+}
+
+.continue-card.primary:hover,
+.continue-card.secondary:hover {
+  border-color: rgba(96, 165, 250, 0.55);
+  box-shadow: 0 14px 32px rgba(2, 12, 27, 0.3);
+}
+
+.continue-card.primary .continue-label,
+.continue-card.secondary .continue-label,
+.continue-card.primary .continue-subject,
+.continue-card.secondary .continue-subject,
+.continue-card.primary .continue-topic,
+.continue-card.secondary .continue-topic,
+.continue-card.primary .continue-last-studied,
+.continue-card.secondary .continue-last-studied {
+  color: #bfdbfe;
+}
+
+.continue-card.primary .continue-btn,
+.continue-card.secondary .continue-btn {
+  color: #dbeafe;
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(96, 165, 250, 0.32);
+}
+
+.db-subject-card:hover,
+.db-recent-item:hover,
+.db-quick-btn:hover {
+  border-color: rgba(96, 165, 250, 0.48);
+  box-shadow: 0 14px 32px rgba(2, 12, 27, 0.3);
+}
+
+.db-subject-progress-fill,
+.db-progress-fill,
+.db-exam-fill,
+.db-xp-fill {
+  background: #3b82f6 !important;
+}
+
+.db-recent-icon {
+  background: #1d4ed8 !important;
+}
+
+.db-recent-score.good,
+.db-recent-score.needs-work {
+  color: #bfdbfe;
+  background: rgba(37, 99, 235, 0.16);
+}
+
+.db-practical-item::before {
+  background: #3b82f6;
+}
+
+.db-practicals-browse-btn,
+.db-cal-save-btn {
+  color: #eff6ff;
+  background: #2563eb;
+  border-color: #3b82f6;
+}
+
+.db-practicals-browse-btn:hover,
+.db-cal-save-btn:hover {
+  background: #1d4ed8;
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    gap: 16px;
+  }
+
+  .dashboard-title-block h1 {
+    font-size: 30px;
+  }
+
+  .dashboard-meta {
+    width: 100%;
+  }
+
+  .continue-card {
+    padding: 18px;
+  }
 }
 
 /* ── Calendar Trigger & Popover ── */
@@ -997,6 +1152,18 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(124,58,237,0.08);
   z-index: 200;
   animation: db-cal-pop 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.db-calendar-picker {
+  position: relative;
+  top: auto;
+  right: auto;
+  width: min(100%, 360px);
+  margin: 14px auto 18px;
+}
+
+.db-calendar-picker::before {
+  display: none;
 }
 
 @keyframes db-cal-pop {
@@ -1080,6 +1247,17 @@
   line-height: 1;
 }
 
+.db-cal-cell:not(.empty) {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+}
+
+.db-cal-cell:disabled {
+  cursor: default;
+}
+
 .db-cal-cell.empty {
   pointer-events: none;
 }
@@ -1156,6 +1334,46 @@
 .db-cal-save-btn:hover {
   box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5);
   transform: translateY(-1px);
+}
+
+.db-cal-save-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+  box-shadow: none;
+}
+
+.db-practical-form {
+  display: grid;
+  gap: 9px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(99, 115, 155, 0.14);
+}
+
+.db-practical-input {
+  width: 100%;
+  padding: 10px 11px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  background: rgba(99, 115, 155, 0.08);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.db-practical-input:focus {
+  border-color: var(--border-highlight);
+}
+
+.db-practical-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.db-practical-form-actions .db-cal-save-btn {
+  flex: 1;
 }
 
 /* Ensure practical row items align correctly with the new button */
@@ -1250,4 +1468,243 @@
   font-size: 11px;
   color: #22c55e;
   font-weight: 800;
+}
+
+/* ── Oxblood and warm amber night theme ── */
+.app-shell:not(.theme-light) .dashboard-shell {
+  color: #F7F0ED;
+}
+
+.app-shell:not(.theme-light) .dashboard-meta,
+.app-shell:not(.theme-light) .db-panel,
+.app-shell:not(.theme-light) .db-stat-card,
+.app-shell:not(.theme-light) .db-practicals-panel,
+.app-shell:not(.theme-light) .db-exam-panel {
+  background: #2B1B21;
+  border-color: #493039;
+}
+
+.app-shell:not(.theme-light) .dashboard-meta-avatar {
+  background: #F5A623;
+  color: #241409;
+}
+
+.app-shell:not(.theme-light) .continue-card.primary,
+.app-shell:not(.theme-light) .continue-card.secondary {
+  background: linear-gradient(135deg, #2B1B21, #38232A);
+  border-color: #493039;
+  box-shadow: 0 8px 32px rgba(19, 12, 14, 0.28);
+}
+
+.app-shell:not(.theme-light) .continue-card.primary:hover,
+.app-shell:not(.theme-light) .continue-card.secondary:hover {
+  background: #422A31;
+  border-color: #63404A;
+  box-shadow: 0 12px 40px rgba(19, 12, 14, 0.38);
+}
+
+.app-shell:not(.theme-light) .continue-card.primary .continue-label,
+.app-shell:not(.theme-light) .continue-card.secondary .continue-label {
+  color: #F5A623;
+}
+
+.app-shell:not(.theme-light) .continue-card.primary .continue-subject,
+.app-shell:not(.theme-light) .continue-card.secondary .continue-subject {
+  color: #F7F0ED;
+}
+
+.app-shell:not(.theme-light) .continue-card.primary .continue-topic,
+.app-shell:not(.theme-light) .continue-card.secondary .continue-topic,
+.app-shell:not(.theme-light) .continue-card.primary .continue-last-studied,
+.app-shell:not(.theme-light) .continue-card.secondary .continue-last-studied {
+  color: #B9A5AA;
+}
+
+.app-shell:not(.theme-light) .db-exam-fill,
+.app-shell:not(.theme-light) .fill-blue,
+.app-shell:not(.theme-light) .fill-purple {
+  background: #F5A623 !important;
+}
+
+.app-shell:not(.theme-light) .db-exam-bar,
+.app-shell:not(.theme-light) .db-progress-track,
+.app-shell:not(.theme-light) .progress-track {
+  background: #63404A;
+}
+
+.app-shell:not(.theme-light) .db-panel-title,
+.app-shell:not(.theme-light) .db-stat-value,
+.app-shell:not(.theme-light) .db-exam-pct,
+.app-shell:not(.theme-light) .db-exam-total-count {
+  color: #F7F0ED;
+}
+
+.app-shell:not(.theme-light) .db-panel-btn,
+.app-shell:not(.theme-light) .db-practicals-browse-btn {
+  color: #241409;
+  background: #F5A623;
+  border-color: #F5A623;
+}
+
+.app-shell:not(.theme-light) .db-panel-btn:hover,
+.app-shell:not(.theme-light) .db-practicals-browse-btn:hover {
+  color: #241409;
+  background: #FFC15C;
+  border-color: #FFC15C;
+}
+
+.app-shell:not(.theme-light) .db-practical-item,
+.app-shell:not(.theme-light) .db-browse-panel {
+  background: #38232A;
+  border-color: #493039;
+}
+
+.app-shell:not(.theme-light) .db-practical-item:hover,
+.app-shell:not(.theme-light) .db-practical-item.is-saved {
+  background: #422A31;
+  border-color: #63404A;
+}
+
+.app-shell:not(.theme-light) .db-progress-track,
+.app-shell:not(.theme-light) .db-exam-bar,
+.app-shell:not(.theme-light) .db-subject-progress-bar,
+.app-shell:not(.theme-light) .db-xp-track {
+  background: #493039;
+}
+
+.app-shell:not(.theme-light) .db-progress-fill,
+.app-shell:not(.theme-light) .db-exam-fill,
+.app-shell:not(.theme-light) .db-subject-progress-fill,
+.app-shell:not(.theme-light) .db-xp-fill {
+  background: #F5A623 !important;
+}
+
+.app-shell:not(.theme-light) .continue-card.primary .continue-btn,
+.app-shell:not(.theme-light) .continue-card.secondary .continue-btn {
+  background: #38232A;
+  border-color: #493039;
+  color: #F7F0ED;
+}
+
+.app-shell:not(.theme-light) .continue-card.primary .continue-btn:hover,
+.app-shell:not(.theme-light) .continue-card.secondary .continue-btn:hover {
+  background: #F5A623;
+  border-color: #FFC15C;
+  color: #241409;
+}
+
+.app-shell.theme-light .dashboard-meta,
+.app-shell.theme-light .db-panel,
+.app-shell.theme-light .db-stat-card,
+.app-shell.theme-light .db-practicals-panel,
+.app-shell.theme-light .db-exam-panel,
+.app-shell.theme-light .db-recent-item,
+.app-shell.theme-light .db-quick-btn {
+  background: #FFFDF9;
+  border-color: #DCC8BE;
+  box-shadow: 0 8px 24px rgba(90, 31, 43, 0.08);
+}
+
+.app-shell.theme-light .dashboard-meta-avatar {
+  background: #5A1F2B;
+  color: #FFF8F0;
+}
+
+.app-shell.theme-light .db-panel-title,
+.app-shell.theme-light .db-stat-value,
+.app-shell.theme-light .db-exam-pct,
+.app-shell.theme-light .db-exam-total-count,
+.app-shell.theme-light .db-quick-btn-label {
+  color: #5A1F2B;
+}
+
+.app-shell.theme-light .db-progress-track,
+.app-shell.theme-light .db-exam-bar,
+.app-shell.theme-light .db-subject-progress-bar,
+.app-shell.theme-light .db-xp-track {
+  background: #E7D9D0;
+}
+
+.app-shell.theme-light .db-progress-fill,
+.app-shell.theme-light .db-exam-fill,
+.app-shell.theme-light .db-subject-progress-fill,
+.app-shell.theme-light .db-xp-fill {
+  background: #B77924 !important;
+}
+
+.app-shell.theme-light .db-panel-btn,
+.app-shell.theme-light .db-practicals-browse-btn {
+  color: #5A1F2B;
+  background: #FFF3E3;
+  border-color: #DCC8BE;
+}
+
+.app-shell.theme-light .db-panel-btn:hover,
+.app-shell.theme-light .db-practicals-browse-btn:hover {
+  color: #5A1F2B;
+  background: #FFE0A3;
+  border-color: #B77924;
+}
+
+.app-shell.theme-light .continue-card.primary,
+.app-shell.theme-light .continue-card.secondary {
+  background: #FFFDF9;
+  border-color: #DCC8BE;
+  box-shadow: 0 8px 24px rgba(90, 31, 43, 0.08);
+}
+
+.app-shell.theme-light .continue-card.primary .continue-label,
+.app-shell.theme-light .continue-card.secondary .continue-label,
+.app-shell.theme-light .continue-card.primary .continue-subject,
+.app-shell.theme-light .continue-card.secondary .continue-subject {
+  color: #5A1F2B;
+}
+
+.app-shell.theme-light .continue-card.primary .continue-topic,
+.app-shell.theme-light .continue-card.secondary .continue-topic,
+.app-shell.theme-light .continue-card.primary .continue-last-studied,
+.app-shell.theme-light .continue-card.secondary .continue-last-studied {
+  color: #765E64;
+}
+
+.app-shell.theme-light .db-cal-popover {
+  background: #FFFDF9;
+  border-color: #DCC8BE;
+  box-shadow: 0 20px 60px rgba(90, 31, 43, 0.16), 0 0 0 1px rgba(183, 121, 36, 0.08);
+}
+
+.app-shell.theme-light .db-cal-popover::before {
+  background: #FFFDF9;
+  border-color: #DCC8BE;
+}
+
+.app-shell.theme-light .db-cal-month-label {
+  color: #5A1F2B;
+}
+
+.app-shell.theme-light .db-cal-cell:not(.empty):hover {
+  background: #FFF0D5;
+  color: #5A1F2B;
+}
+
+.app-shell.theme-light .db-cal-cell.highlight {
+  background: #B77924;
+  color: #FFFDF9 !important;
+  box-shadow: 0 2px 12px rgba(183, 121, 36, 0.28);
+}
+
+.app-shell.theme-light .db-cal-event-info {
+  background: #FFF3E3;
+  border-color: #E7D9D0;
+}
+
+.app-shell.theme-light .db-cal-save-btn {
+  color: #241409;
+  background: #B77924;
+  box-shadow: 0 4px 14px rgba(183, 121, 36, 0.24);
+}
+
+.app-shell.theme-light .db-cal-save-btn:hover {
+  background: #D59A3D;
+  box-shadow: 0 6px 20px rgba(183, 121, 36, 0.32);
 }

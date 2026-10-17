@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { BookOpen } from 'lucide-react'
+import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { ArrowLeft, BookOpen, Bookmark, Check, ChevronRight, Compass, LayoutDashboard, Library, Search, SlidersHorizontal } from 'lucide-react'
 import './App.css'
 import Dashboard from './Dashboard'
 
@@ -21,6 +21,95 @@ const subjects = [
   { name: 'Database Systems', code: 'CS303', icon: '▤', color: 'pink', desc: 'Relational model, SQL optimization, B+ Tree indexing, Normalization, and ACID transactions.', topics: ['SQL Joins & Optimization', 'B+ Tree Indexing', 'Normalization Forms'] },
   { name: 'Machine Learning & AI', code: 'AI401', icon: '⚡', color: 'orange', desc: 'Supervised/Unsupervised models, Neural Networks, Backpropagation, and Model Evaluation.', topics: ['Gradient Descent', 'Decision Trees', 'Neural Network Architecture'] },
   { name: 'Web Engineering', code: 'CS204', icon: '⊕', color: 'cyan', desc: 'DOM architecture, REST APIs, GraphQL, Security (CORS/CSRF), and Web Performance.', topics: ['REST API Design', 'Authentication & JWT', 'Performance Optimization'] },
+]
+
+type Difficulty = 'Easy' | 'Medium' | 'Hard'
+interface CuratedQuestion {
+  id: string
+  subject: string
+  branch: string
+  semester: string
+  unit: string
+  experiment: string
+  prompt: string
+  answer: string
+  explanation: string
+  difficulty: Difficulty
+  tags: string[]
+  source: string
+}
+
+const curatedQuestions: CuratedQuestion[] = [
+  {
+    id: 'cn-tcp-handshake',
+    subject: 'Computer Networks',
+    branch: 'Computer Science',
+    semester: 'Semester 5',
+    unit: 'Transport Layer: UDP/TCP',
+    experiment: 'Socket Programming Lab',
+    prompt: 'Explain the complete process of TCP connection establishment. Why is the three-way handshake required?',
+    answer: 'The client sends a SYN with an initial sequence number. The server replies with SYN-ACK, acknowledging that number and providing its own sequence number. The client sends ACK, confirming the server sequence number. Both endpoints are now synchronized and can exchange reliable, full-duplex data.',
+    explanation: 'Three messages allow both endpoints to prove reachability and synchronize sequence numbers in both directions without treating an old duplicate request as a new connection.',
+    difficulty: 'Medium',
+    tags: ['TCP', 'handshake', 'reliability'],
+    source: 'MUJ CS301 syllabus · Transport Layer',
+  },
+  {
+    id: 'cn-subnetting',
+    subject: 'Computer Networks',
+    branch: 'Computer Science',
+    semester: 'Semester 5',
+    unit: 'Network Layer & Routing',
+    experiment: 'IP Addressing Worksheet',
+    prompt: 'A /24 network must be divided into at least six equal subnets. Determine the new prefix and usable hosts per subnet.',
+    answer: 'Borrow 3 host bits because 2³ = 8 subnets, giving a /27 prefix. Each subnet has 2⁵ = 32 addresses, of which 30 are usable after removing the network and broadcast addresses.',
+    explanation: 'Subnetting trades host bits for network bits. Always choose the smallest number of borrowed bits that meets the required subnet count, then calculate usable hosts from the remaining host bits.',
+    difficulty: 'Hard',
+    tags: ['IPv4', 'CIDR', 'numerical'],
+    source: 'MUJ CS301 syllabus · Classless Addressing',
+  },
+  {
+    id: 'cn-arq',
+    subject: 'Computer Networks',
+    branch: 'Computer Science',
+    semester: 'Semester 5',
+    unit: 'Data Link Layer & LLC',
+    experiment: 'Reliable Transmission Lab',
+    prompt: 'Compare Stop-and-Wait, Go-Back-N, and Selective Repeat ARQ.',
+    answer: 'Stop-and-Wait allows one outstanding frame and retransmits it after a timeout. Go-Back-N pipelines frames but retransmits the errored frame and all later frames. Selective Repeat pipelines frames and retransmits only missing or damaged frames, giving better efficiency at the cost of buffering and more complex receiver logic.',
+    explanation: 'The best choice depends on delay, error rate, memory, and implementation complexity. Selective Repeat is most efficient on long, noisy links.',
+    difficulty: 'Medium',
+    tags: ['ARQ', 'LLC', 'error control'],
+    source: 'MUJ CS301 syllabus · Data Link Layer',
+  },
+  {
+    id: 'cn-shannon',
+    subject: 'Computer Networks',
+    branch: 'Computer Science',
+    semester: 'Semester 5',
+    unit: 'Physical Layer & Transmission',
+    experiment: 'Channel Capacity Worksheet',
+    prompt: 'A channel has a bandwidth of 3 kHz and an SNR of 30 dB. Use Shannon capacity to estimate its maximum data rate.',
+    answer: 'Convert 30 dB to a power ratio: SNR = 10³. Shannon capacity is C = B log₂(1 + SNR) = 3000 log₂(1001), approximately 29.9 kbps.',
+    explanation: 'Shannon capacity is an upper bound for a noisy channel. It does not guarantee that a particular coding or modulation scheme will achieve that rate.',
+    difficulty: 'Hard',
+    tags: ['Shannon', 'capacity', 'numerical'],
+    source: 'MUJ CS301 syllabus · Channel Capacity',
+  },
+  {
+    id: 'cn-dns',
+    subject: 'Computer Networks',
+    branch: 'Computer Science',
+    semester: 'Semester 5',
+    unit: 'Application Layer & Sockets',
+    experiment: 'Socket Programming Lab',
+    prompt: 'Differentiate recursive and iterative DNS resolution.',
+    answer: 'In recursive resolution, the server contacted by the client takes responsibility for finding the final answer, possibly querying other DNS servers. In iterative resolution, each server returns the best referral or answer it knows, and the requester continues the lookup.',
+    explanation: 'Recursive service is convenient for clients, while iterative referrals distribute lookup work across the hierarchy and make delegation explicit.',
+    difficulty: 'Easy',
+    tags: ['DNS', 'application layer', 'resolution'],
+    source: 'MUJ CS301 syllabus · Application Layer',
+  },
 ]
 
 /* ── Examiner personas ── */
@@ -131,8 +220,259 @@ const careerNotifications = [
   },
 ]
 
+type AppView = 'dashboard' | 'subjects' | 'subject-detail' | 'question-detail' | 'bookmarks' | 'practice-session' | 'practice-results'
+
+type PracticeAnswer = { selected?: string; text: string; correct: boolean; feedback?: string; unitMissing?: boolean }
+type PracticeAttempt = { id: string; date: string; score: number; total: number; weakTopics: string[]; mode: 'mcq' | 'short'; difficulty: Difficulty }
+type GeneratedQuestionType = 'short-answer' | 'conceptual' | 'mcq' | 'follow-up'
+type GeneratedQuestion = { question: string; type: GeneratedQuestionType; modelAnswer: string; rubric: string[] }
+
+type NumericalCheck = { value: number; units: string[] }
+type PracticeBlueprint = {
+  id: string
+  mode: 'mcq' | 'short'
+  prompt?: string
+  options?: string[]
+  correct?: string
+  numerical?: NumericalCheck[]
+}
+
+const practiceBlueprints: PracticeBlueprint[] = [
+  {
+    id: 'cn-tcp-handshake',
+    mode: 'mcq' as const,
+    prompt: 'Which sequence correctly describes TCP connection establishment?',
+    options: ['SYN → SYN-ACK → ACK', 'ACK → SYN → SYN-ACK', 'SYN → ACK → FIN', 'FIN → FIN-ACK → ACK'],
+    correct: 'SYN → SYN-ACK → ACK',
+  },
+  {
+    id: 'cn-subnetting',
+    mode: 'short',
+    numerical: [
+      { value: 27, units: ['/', 'prefix', 'cidr'] },
+      { value: 30, units: ['host', 'hosts', 'usable'] },
+    ],
+  },
+  {
+    id: 'cn-arq',
+    mode: 'mcq' as const,
+    prompt: 'Which ARQ protocol retransmits only the frames that are lost or damaged?',
+    options: ['Stop-and-Wait ARQ', 'Go-Back-N ARQ', 'Selective Repeat ARQ', 'Pure ALOHA'],
+    correct: 'Selective Repeat ARQ',
+  },
+  {
+    id: 'cn-shannon',
+    mode: 'short',
+    numerical: [{ value: 29.9, units: ['kbps', 'kilobit', 'kilobits'] }],
+  },
+  {
+    id: 'cn-dns',
+    mode: 'mcq' as const,
+    prompt: 'What happens during recursive DNS resolution?',
+    options: [
+      'The contacted DNS server finds the final answer on behalf of the client',
+      'The client contacts every authoritative server directly',
+      'The query is broadcast to every DNS server',
+      'The DNS server establishes a circuit-switched connection',
+    ],
+    correct: 'The contacted DNS server finds the final answer on behalf of the client',
+  },
+]
+
+function numericalAnswer(text: string, checks: NumericalCheck[]) {
+  const numbers = [...text.matchAll(/(?:\d+\.\d+|\d+)/g)].map((match) => Number(match[0]))
+  const valuesMatch = checks.every((check) => numbers.some((number) => Math.abs(number - check.value) < 0.05))
+  if (!valuesMatch) return { correct: false, feedback: 'Check the numerical value and try again.' }
+
+  const normalized = text.toLowerCase()
+  const missingUnit = checks.some((check) => !check.units.some((unit) => normalized.includes(unit)))
+  return missingUnit
+    ? { correct: true, unitMissing: true, feedback: 'Correct numerical value. Add the unit to make your answer complete.' }
+    : { correct: true, feedback: 'Correct numerical value and unit.' }
+}
+
+function loadAttempts(): PracticeAttempt[] {
+  const stored = window.localStorage.getItem('vivabank-practice-attempts')
+  if (!stored) return []
+  try {
+    const parsed: unknown = JSON.parse(stored)
+    return Array.isArray(parsed) ? parsed as PracticeAttempt[] : []
+  } catch (error) {
+    console.warn('Unable to restore practice history.', error)
+    return []
+  }
+}
+
+function loadIdSet(key: string) {
+  const stored = window.localStorage.getItem(key)
+  if (!stored) return new Set<string>()
+  try {
+    const parsed: unknown = JSON.parse(stored)
+    return new Set(Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : [])
+  } catch (error) {
+    console.warn(`Unable to restore ${key}.`, error)
+    return new Set<string>()
+  }
+}
+
+function validateGeneratedQuestions(value: unknown): GeneratedQuestion[] {
+    if (!Array.isArray(value)) return []
+    return value.flatMap((item) => {
+      if (!item || typeof item !== 'object') return []
+      const candidate = item as Record<string, unknown>
+      if (typeof candidate.question !== 'string' || candidate.question.trim().length < 15) return []
+      const type = candidate.type
+      if (!['short-answer', 'conceptual', 'mcq', 'follow-up'].includes(String(type))) return []
+      if (typeof candidate.modelAnswer !== 'string' || candidate.modelAnswer.trim().length < 20) return []
+      const rubric = Array.isArray(candidate.rubric) ? candidate.rubric.filter((part): part is string => typeof part === 'string' && part.trim().length > 0).slice(0, 5) : []
+      return rubric.length >= 2 ? [{ question: candidate.question.trim(), type: type as GeneratedQuestionType, modelAnswer: candidate.modelAnswer.trim(), rubric }] : []
+    }).slice(0, 10)
+  }
+
+async function generateWithGemini(apiKey: string, request: string): Promise<GeneratedQuestion[]> {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: request }] }] }),
+    })
+    if (!response.ok) throw new Error(`AI generation failed (${response.status}).`)
+    const payload: unknown = await response.json()
+    const text = (payload as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }).candidates?.[0]?.content?.parts?.[0]?.text
+    if (!text) throw new Error('The AI returned an empty response.')
+    const json = text.match(/\[[\s\S]*\]/)?.[0]
+    if (!json) throw new Error('The AI response was not valid JSON.')
+    const questions = validateGeneratedQuestions(JSON.parse(json))
+    if (questions.length === 0) throw new Error('The AI response did not contain valid questions.')
+    return questions
+}
+
+function PracticePage({ questions, index, answers, timeRemaining, mode, difficulty, onAnswer, onNext, onFinish, onExit }: {
+  questions: CuratedQuestion[]
+  index: number
+  answers: Record<string, PracticeAnswer>
+  timeRemaining: number
+  mode: 'mcq' | 'short'
+  difficulty: Difficulty
+  onAnswer: (answer: PracticeAnswer) => void
+  onNext: () => void
+  onFinish: () => void
+  onExit: () => void
+}) {
+  const question = questions[index]
+  const practiceMeta = practiceBlueprints.find((item) => item.id === question.id)
+  const mcqOptions = practiceMeta?.options
+  const current = answers[question.id]
+  const isLast = index === questions.length - 1
+  const handleShortAnswer = (text: string) => {
+    const numericalResult = practiceMeta?.numerical
+      ? numericalAnswer(text, practiceMeta.numerical)
+      : {
+        correct: text.trim().length > 20 && question.answer.split(' ').some((word) => word.length > 4 && text.toLowerCase().includes(word.toLowerCase())),
+        feedback: text.trim().length > 20 ? 'Answer recorded.' : 'Add a little more detail to your answer.',
+      }
+    onAnswer({ text, ...numericalResult })
+  }
+  return <section className="workspace-page practice-page">
+    <div className="practice-session-header"><div><span className="eyebrow">Practice session · {difficulty}</span><h1>{mode === 'mcq' ? 'Concept check' : 'Short-answer practice'}</h1></div><button className="secondary-action" type="button" onClick={onExit}>Exit session</button></div>
+    <div className="practice-progress-row"><span>Question {index + 1} of {questions.length}</span><div className="practice-progress"><span style={{ width: `${((index + 1) / questions.length) * 100}%` }} /></div><strong>{Math.floor(timeRemaining / 60)}:{String(timeRemaining % 60).padStart(2, '0')}</strong></div>
+    <article className="content-card practice-question-card"><div className="question-detail-meta"><span className="status-badge blue">{question.unit}</span><span className="muted-label">{question.difficulty} · {question.tags.join(' · ')}</span></div><h2>{mode === 'mcq' ? (practiceMeta?.prompt ?? question.prompt) : question.prompt}</h2>{mode === 'mcq' && mcqOptions ? <div className="mcq-options">{mcqOptions.map((option) => <button key={option} type="button" className={`mcq-option${current?.selected === option ? ' selected' : ''}`} onClick={() => onAnswer({ selected: option, text: option, correct: option === practiceMeta.correct, feedback: option === practiceMeta.correct ? 'Correct answer.' : 'That option is not correct.' })}><span>{String.fromCharCode(65 + mcqOptions.indexOf(option))}</span>{option}</button>)}</div> : <><textarea className="practice-answer-input" value={current?.text ?? ''} onChange={(event) => handleShortAnswer(event.target.value)} placeholder="Write your answer in your own words..." />{current?.feedback && <p className={`practice-answer-feedback${current.unitMissing ? ' unit-missing' : ''}`}>{current.feedback}</p>}</>}</article>
+    <div className="practice-actions">{index > 0 && <button className="secondary-action" type="button" onClick={onNext}>Skip for now</button>}{isLast ? <button className="primary-action" type="button" onClick={onFinish}>Finish practice <Check size={16} /></button> : <button className="primary-action" type="button" onClick={onNext} disabled={!current}>Next question <ChevronRight size={16} /></button>}</div>
+  </section>
+}
+
+function ResultsPage({ attempt, questions, answers, history, onStart, onReview, onBack }: { attempt: PracticeAttempt; questions: CuratedQuestion[]; answers: Record<string, PracticeAnswer>; history: PracticeAttempt[]; onStart: () => void; onReview: (id: string) => void; onBack: () => void }) {
+  const incorrect = questions.filter((question) => !answers[question.id]?.correct)
+  return <section className="workspace-page results-page"><div className="page-heading"><div><span className="eyebrow">Practice complete</span><h1>Nice work. Review your result.</h1><p>Your attempt is saved locally and will remain available after refresh.</p></div><button className="primary-action" type="button" onClick={onStart}>Try another session <ChevronRight size={16} /></button></div><div className="results-grid"><article className="content-card score-card"><span className="eyebrow">Score</span><strong>{attempt.score}<small>/{attempt.total}</small></strong><span>{Math.round((attempt.score / attempt.total) * 100)}% correct</span></article><article className="content-card"><span className="eyebrow">Weak topics</span><div className="weak-topic-list">{(attempt.weakTopics.length ? attempt.weakTopics : ['No weak topics detected']).map((topic) => <span key={topic}>{topic}</span>)}</div></article></div><div className="results-section"><div className="card-section-heading"><h2>Review answers</h2><span className="muted-label">{incorrect.length} to revisit</span></div><div className="review-list">{questions.map((question) => <button key={question.id} type="button" className={`review-row ${answers[question.id]?.correct ? 'correct' : 'incorrect'}`} onClick={() => onReview(question.id)}><span>{answers[question.id]?.correct ? '✓' : '!'}</span><div><strong>{question.prompt}</strong><small>{question.unit}</small>{answers[question.id]?.feedback && <em>{answers[question.id].feedback}</em>}<em>Correct answer: {question.answer}</em><em>{question.explanation}</em></div><ChevronRight size={16} /></button>)}</div></div><div className="results-section"><div className="card-section-heading"><h2>Attempt history</h2><span className="muted-label">Saved on this device</span></div><div className="history-list">{history.slice(0, 5).map((item) => <div className="history-row" key={item.id}><span>{new Date(item.date).toLocaleDateString()}</span><strong>{item.score}/{item.total}</strong><span>{item.mode.toUpperCase()} · {item.difficulty}</span></div>)}</div><button className="page-back" type="button" onClick={onBack}><ArrowLeft size={16} /> Back to study space</button></div></section>
+}
+
+interface StudyPageProps {
+  subjects: typeof subjects
+  page: AppView
+  searchTerm: string
+  setSearchTerm: (value: string) => void
+  onOpenSubject: (name: string) => void
+  onStartPractice: () => void
+  selectedQuestion: CuratedQuestion
+  bookmarkedIds: Set<string>
+  revisedIds: Set<string>
+  onToggleBookmark: (id: string) => void
+  onToggleRevised: (id: string) => void
+  revealedAnswer: boolean
+  onToggleAnswer: () => void
+  onOpenQuestion: (id?: string) => void
+  onBack: () => void
+  selectedSubject: string
+}
+
+function StudyPage({ subjects, page, searchTerm, setSearchTerm, onOpenSubject, onStartPractice, selectedQuestion, bookmarkedIds, revisedIds, onToggleBookmark, onToggleRevised, revealedAnswer, onToggleAnswer, onOpenQuestion, onBack, selectedSubject }: StudyPageProps) {
+  const subject = subjects.find((item) => item.name === selectedSubject) ?? subjects[0]
+  const [difficulty, setDifficulty] = useState<'All' | Difficulty>('All')
+  const filteredQuestions = curatedQuestions.filter((question) => {
+    const searchable = `${question.prompt} ${question.answer} ${question.unit} ${question.tags.join(' ')}`.toLowerCase()
+    return searchable.includes(searchTerm.toLowerCase()) && (difficulty === 'All' || question.difficulty === difficulty)
+  })
+  const filteredSubjects = subjects.filter((item) => `${item.name} ${item.desc} ${item.topics.join(' ')}`.toLowerCase().includes(searchTerm.toLowerCase()))
+
+  if (page === 'subject-detail') {
+    return (
+      <section className="workspace-page">
+        <button className="page-back" type="button" onClick={onBack}><ArrowLeft size={16} /> Back to subjects</button>
+        <div className="page-heading">
+          <div>
+            <span className="eyebrow">{subject.code} · Subject details</span>
+            <h1>{subject.name}</h1>
+            <p>{subject.desc}</p>
+          </div>
+          <button className="primary-action" type="button" onClick={onStartPractice}>Start practice <ChevronRight size={16} /></button>
+        </div>
+        <div className="detail-grid">
+          <article className="content-card detail-overview">
+            <div className={`card-icon ${subject.color}`}>{subject.icon}</div>
+            <h2>Course overview</h2>
+            <p>Build confidence through focused explanations, numerical problems, and competitive-exam style questions.</p>
+            <div className="detail-stats"><span><strong>{subject.topics.length}</strong> learning tracks</span><span><strong>54</strong> practice prompts</span></div>
+          </article>
+          <article className="content-card">
+            <div className="card-section-heading"><h2>Topics to master</h2><span className="muted-label">Recommended path</span></div>
+            <div className="topic-list">{subject.topics.map((topic, index) => <button type="button" key={topic} onClick={() => onOpenQuestion(curatedQuestions[index % curatedQuestions.length].id)}><span className="topic-index">0{index + 1}</span><span>{topic}</span><ChevronRight size={16} /></button>)}</div>
+          </article>
+        </div>
+      </section>
+    )
+  }
+
+  if (page === 'question-detail') {
+    return (
+      <section className="workspace-page">
+        <button className="page-back" type="button" onClick={onBack}><ArrowLeft size={16} /> Back to question bank</button>
+        <div className="page-heading"><div><span className="eyebrow">Question detail · {selectedQuestion.unit}</span><h1>{selectedQuestion.prompt}</h1><p>{selectedQuestion.semester} · {selectedQuestion.branch} · Source: {selectedQuestion.source}</p></div><button className="primary-action" type="button" onClick={onStartPractice}>Practice this <ChevronRight size={16} /></button></div>
+        <article className="content-card question-detail-card">
+          <div className="question-detail-meta"><span className="status-badge blue">{selectedQuestion.difficulty}</span><span className="muted-label">{selectedQuestion.tags.join(' · ')}</span></div>
+          <div className="question-actions"><button className={`secondary-action ${bookmarkedIds.has(selectedQuestion.id) ? 'selected-action' : ''}`} type="button" onClick={() => onToggleBookmark(selectedQuestion.id)}><Bookmark size={16} fill={bookmarkedIds.has(selectedQuestion.id) ? 'currentColor' : 'none'} /> {bookmarkedIds.has(selectedQuestion.id) ? 'Bookmarked' : 'Bookmark'}</button><button className={`secondary-action ${revisedIds.has(selectedQuestion.id) ? 'selected-action' : ''}`} type="button" onClick={() => onToggleRevised(selectedQuestion.id)}><Check size={16} /> {revisedIds.has(selectedQuestion.id) ? 'Marked revised' : 'Mark as revised'}</button></div>
+          <div className="answer-reveal"><div className="answer-reveal-header"><h2>Answer and explanation</h2><button className="text-action" type="button" onClick={onToggleAnswer}>{revealedAnswer ? 'Hide answer' : 'Reveal answer'}</button></div>{revealedAnswer ? <><p className="answer-text">{selectedQuestion.answer}</p><div className="answer-explanation"><strong>Why it matters</strong><p>{selectedQuestion.explanation}</p></div></> : <div className="answer-hidden">Try answering from memory first, then reveal the explanation.</div>}</div>
+        </article>
+      </section>
+    )
+  }
+
+  return (
+    <section className="workspace-page">
+      <div className="page-heading"><div><span className="eyebrow">{selectedSubject === 'bookmarks' ? 'Your study queue' : 'Explore your syllabus'}</span><h1>{selectedSubject === 'bookmarks' ? 'Bookmarked questions' : 'Subject explorer'}</h1><p>{selectedSubject === 'bookmarks' ? 'Return to saved questions and track what you have revised.' : 'Browse structured courses or search directly across the curated question bank.'}</p></div><button className="secondary-action" type="button" onClick={() => onOpenQuestion(filteredQuestions[0]?.id)}><Bookmark size={16} /> Open a question</button></div>
+      <div className="explorer-toolbar"><label className="search-field"><Search size={17} /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search questions, units, tags, or subjects" /></label><select className="filter-button" value={difficulty} onChange={(event) => setDifficulty(event.target.value as 'All' | Difficulty)}><option value="All">All difficulties</option><option value="Easy">Easy</option><option value="Medium">Medium</option><option value="Hard">Hard</option></select><button className="filter-button" type="button"><SlidersHorizontal size={16} /> {filteredQuestions.length} questions</button></div>
+      {selectedSubject === 'bookmarks' ? <div className="question-bank-grid">{curatedQuestions.filter((question) => bookmarkedIds.has(question.id)).map((question) => <QuestionCard key={question.id} question={question} bookmarked={bookmarkedIds.has(question.id)} revised={revisedIds.has(question.id)} onOpenQuestion={onOpenQuestion} onToggleBookmark={onToggleBookmark} />)}</div> : <div className="explorer-grid">{filteredSubjects.map((item) => <button type="button" className="explorer-card" key={item.name} onClick={() => onOpenSubject(item.name)}><div className="explorer-card-top"><div className={`card-icon ${item.color}`}>{item.icon}</div><span className="card-code">{item.code}</span></div><h2>{item.name}</h2><p>{item.desc}</p><div className="explorer-card-footer"><span>{item.topics.length} learning tracks</span><ChevronRight size={17} /></div></button>)}</div>}
+      {selectedSubject === 'bookmarks' && !curatedQuestions.some((question) => bookmarkedIds.has(question.id)) && <div className="empty-note"><Bookmark size={24} /><strong>No bookmarks yet</strong><span>Open a question and save it to build your study queue.</span></div>}
+      {selectedSubject !== 'bookmarks' && <div className="question-bank-section"><div className="card-section-heading"><h2>Curated questions</h2><span className="muted-label">Computer Networks · CS301</span></div><div className="question-bank-grid">{filteredQuestions.map((question) => <QuestionCard key={question.id} question={question} bookmarked={bookmarkedIds.has(question.id)} revised={revisedIds.has(question.id)} onOpenQuestion={onOpenQuestion} onToggleBookmark={onToggleBookmark} />)}</div></div>}
+      {filteredQuestions.length === 0 && <div className="empty-note"><Compass size={24} /><strong>No questions found</strong><span>Try another search or difficulty.</span></div>}
+    </section>
+  )
+}
+
+function QuestionCard({ question, bookmarked, revised, onOpenQuestion, onToggleBookmark }: { question: CuratedQuestion; bookmarked: boolean; revised: boolean; onOpenQuestion: (id?: string) => void; onToggleBookmark: (id: string) => void }) {
+  return <article className="question-card"><button className="question-card-main" type="button" onClick={() => onOpenQuestion(question.id)}><div className="question-card-meta"><span className="status-badge blue">{question.difficulty}</span><span className="muted-label">{question.unit}</span></div><h3>{question.prompt}</h3><div className="question-card-tags">{question.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div><p>{question.source}</p></button><div className="question-card-footer"><button className={`icon-action ${bookmarked ? 'revised' : ''}`} type="button" onClick={() => onToggleBookmark(question.id)} aria-label="Bookmark question"><Bookmark size={16} fill={bookmarked ? 'currentColor' : 'none'} /></button><span>{revised ? 'Revised' : bookmarked ? 'Bookmarked' : 'Not revised'}</span></div></article>
+}
+
 function App() {
-  const [activeView, setActiveView] = useState<'dashboard' | 'practice'>('dashboard')
+  const [activeView, setActiveView] = useState<AppView>('dashboard')
   const [activeDialog, setActiveDialog] = useState<'viva' | 'key' | 'bank' | null>(null)
   const [selectedSubject, setSelectedSubject] = useState('Computer Networks')
   const [selectedBankSubject, setSelectedBankSubject] = useState('Computer Networks')
@@ -160,12 +500,34 @@ function App() {
   const [showHint, setShowHint] = useState(false)
   const [examSource, setExamSource] = useState<'standard' | 'custom'>('standard')
   const [customSyllabus, setCustomSyllabus] = useState('')
+  const [vivaUnit, setVivaUnit] = useState(subjects[0].topics[0])
+  const [vivaExperiment, setVivaExperiment] = useState('Socket Programming Lab')
+  const [vivaDifficulty, setVivaDifficulty] = useState<Difficulty>('Medium')
+  const [vivaQuestionType, setVivaQuestionType] = useState<GeneratedQuestionType>('short-answer')
+  const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedQuestion[]>([])
+  const [generationStatus, setGenerationStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [generationError, setGenerationError] = useState('')
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [notificationIndex, setNotificationIndex] = useState(0)
   const [notificationsVisible, setNotificationsVisible] = useState(true)
   const [examQuestions, setExamQuestions] = useState<string[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedPageSubject, setSelectedPageSubject] = useState('Computer Networks')
+  const [selectedQuestionId, setSelectedQuestionId] = useState(curatedQuestions[0].id)
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(() => loadIdSet('vivabank-bookmarks'))
+  const [revisedIds, setRevisedIds] = useState<Set<string>>(() => loadIdSet('vivabank-revised'))
+  const [revealedAnswer, setRevealedAnswer] = useState(false)
+  const [practiceMode, setPracticeMode] = useState<'mcq' | 'short'>('mcq')
+  const [practiceDifficulty, setPracticeDifficulty] = useState<Difficulty>('Medium')
+  const [practiceQuestions, setPracticeQuestions] = useState<CuratedQuestion[]>([])
+  const [practiceIndex, setPracticeIndex] = useState(0)
+  const [practiceAnswers, setPracticeAnswers] = useState<Record<string, PracticeAnswer>>({})
+  const [practiceTime, setPracticeTime] = useState(300)
+  const [lastAttempt, setLastAttempt] = useState<PracticeAttempt | null>(null)
+  const [attemptHistory, setAttemptHistory] = useState<PracticeAttempt[]>(loadAttempts)
 
   const currentPrompt = examQuestions[currentQuestion - 1] ?? questionTemplates[(currentQuestion - 1) % questionTemplates.length](selectedSubject)
+  const currentGeneratedQuestion = generatedQuestions[currentQuestion - 1]
   const currentSubjectData = subjects.find(s => s.name === selectedSubject)
   const bankSubjectData = subjects.find(s => s.name === selectedBankSubject)
   const bankQuestions = questionBankQuestions(selectedBankSubject, selectedBankTopic, bankRotation)
@@ -173,12 +535,50 @@ function App() {
 
   const closeDialog = () => setActiveDialog(null)
 
-  const openQuestionBank = () => {
-    const subject = subjects.find(s => s.name === selectedBankSubject) ?? subjects[0]
-    setSelectedBankTopic(subject.topics[0])
-    setBankTopicInput('')
-    setActiveDialog('bank')
+  const navigate = (view: AppView) => {
+    setActiveView(view)
+    setActiveDialog(null)
+    if (view !== 'subject-detail') window.history.replaceState(null, '', window.location.pathname)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+
+  const toggleSetValue = (setter: Dispatch<SetStateAction<Set<string>>>, id: string, storageKey: string) => {
+    setter((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      window.localStorage.setItem(storageKey, JSON.stringify([...next]))
+      return next
+    })
+  }
+
+  const openCuratedQuestion = (id?: string) => {
+    if (id) setSelectedQuestionId(id)
+    setRevealedAnswer(false)
+    navigate('question-detail')
+  }
+
+  const startPractice = () => {
+    const eligible = curatedQuestions.filter((question) => practiceDifficulty === 'Medium' || question.difficulty === practiceDifficulty)
+    const modeEligible = eligible.filter((question) => practiceBlueprints.find((item) => item.id === question.id)?.mode === practiceMode)
+    const selected = shuffle(modeEligible.length >= 2 ? modeEligible : eligible.length >= 3 ? eligible : curatedQuestions).slice(0, 4)
+    setPracticeQuestions(selected)
+    setPracticeIndex(0)
+    setPracticeAnswers({})
+    setPracticeTime(300)
+    navigate('practice-session')
+  }
+
+  const finishPractice = useCallback(() => {
+    const correct = practiceQuestions.filter((question) => practiceAnswers[question.id]?.correct)
+    const weakTopics = practiceQuestions.filter((question) => !practiceAnswers[question.id]?.correct).map((question) => question.unit)
+    const attempt: PracticeAttempt = { id: String(Date.now()), date: new Date().toISOString(), score: correct.length, total: practiceQuestions.length, weakTopics: [...new Set(weakTopics)], mode: practiceMode, difficulty: practiceDifficulty }
+    const nextHistory = [attempt, ...attemptHistory]
+    setLastAttempt(attempt)
+    setAttemptHistory(nextHistory)
+    window.localStorage.setItem('vivabank-practice-attempts', JSON.stringify(nextHistory))
+    navigate('practice-results')
+  }, [attemptHistory, practiceAnswers, practiceDifficulty, practiceMode, practiceQuestions])
 
   const selectBankSubject = (subjectName: string) => {
     const subject = subjects.find(s => s.name === subjectName)
@@ -206,7 +606,9 @@ function App() {
   }
 
   const startExam = () => {
-    const prompts = selectedSubject === 'Computer Networks'
+    const prompts = generatedQuestions.length > 0
+      ? generatedQuestions.map((item) => item.question).slice(0, questionCount)
+      : selectedSubject === 'Computer Networks'
       ? shuffle(computerNetworksQuestions).slice(0, Math.max(questionCount, 7))
       : shuffle(questionTemplates).map((template) => template(selectedSubject))
     setCurrentQuestion(1)
@@ -218,6 +620,27 @@ function App() {
     setExamQuestions(prompts)
     setExamStarted(true)
     closeDialog()
+  }
+
+  const generateVivaQuestions = async () => {
+    if (!apiKey.trim()) {
+      setGenerationError('Add your Gemini API key before generating AI questions.')
+      setGenerationStatus('error')
+      return
+    }
+    setGenerationStatus('loading')
+    setGenerationError('')
+    const syllabus = examSource === 'custom' ? customSyllabus.trim() : selectedSubject
+    const request = `Return only a JSON array. Generate ${Math.max(questionCount, 4)} ${vivaQuestionType} viva questions for ${syllabus}, unit ${vivaUnit}, experiment ${vivaExperiment}, difficulty ${vivaDifficulty}. Each object must contain question, type (${vivaQuestionType}), modelAnswer, and rubric (an array of at least 2 concrete scoring criteria). Stay within computer networking or the supplied syllabus. Do not invent prerequisites or facts.`
+    try {
+      const generated = await generateWithGemini(apiKey.trim(), request)
+      setGeneratedQuestions(generated)
+      setGenerationStatus('idle')
+    } catch (error) {
+      setGeneratedQuestions([])
+      setGenerationStatus('error')
+      setGenerationError(error instanceof Error ? error.message : 'Unable to generate questions. Using the built-in question bank is still available.')
+    }
   }
 
   const nextQuestion = useCallback(() => {
@@ -237,8 +660,11 @@ function App() {
     const normalizedAnswer = answer.trim().toLowerCase()
     const hints = subjectHints[selectedSubject] ?? []
     const matchedHints = hints.filter((hint) => normalizedAnswer.includes(hint.toLowerCase()))
-    const acc = Math.min(95, 40 + matchedHints.length * 12 + Math.min(normalizedAnswer.length / 10, 25))
-    const dep = Math.min(95, 35 + matchedHints.length * 11 + Math.min(normalizedAnswer.length / 12, 30))
+    const generatedRubric = generatedQuestions[currentQuestion - 1]?.rubric ?? []
+    const matchedRubric = generatedRubric.filter((criterion) => normalizedAnswer.includes(criterion.toLowerCase()))
+    const evidence = matchedHints.length + matchedRubric.length
+    const acc = Math.min(95, 40 + evidence * 12 + Math.min(normalizedAnswer.length / 10, 25))
+    const dep = Math.min(95, 35 + evidence * 11 + Math.min(normalizedAnswer.length / 12, 30))
     const cla = Math.min(95, 55 + Math.min(normalizedAnswer.length / 8, 30))
 
     if (normalizedAnswer.length < 25) {
@@ -250,24 +676,24 @@ function App() {
         commentary: `"Your response lacks sufficient depth. Let us revisit the fundamentals of ${selectedSubject}."`,
         action: 'deep dive'
       })
-    } else if (matchedHints.length === 0) {
+    } else if (evidence === 0) {
       setFeedback({
-        title: 'Good attempt, but add subject language',
+        title: 'Good attempt, but add rubric evidence',
         correction: `Your answer does not yet mention the core concepts expected in ${selectedSubject}.`,
-        instruction: `Use specific terms such as ${hints.slice(0, 3).join(', ')}, then explain how they relate to the question.`,
+        instruction: `Address these criteria: ${(generatedRubric.length ? generatedRubric : hints).slice(0, 3).join(', ')}.`,
         tone: 'needs-work', accuracy: Math.round(acc), depth: Math.round(dep), clarity: Math.round(cla),
-        strengths: ['Logical structure'], gaps: hints.slice(0, 2),
+        strengths: ['Logical structure'], gaps: (generatedRubric.length ? generatedRubric : hints).slice(0, 2),
         commentary: `"Your response lacks precise technical terminology regarding ${selectedSubject}. Let us step back to core principles."`,
         action: 'cross examine'
       })
     } else {
       setFeedback({
         title: 'Solid direction',
-        correction: `You used relevant ${selectedSubject} concepts: ${matchedHints.slice(0, 3).join(', ')}.`,
+        correction: `Your answer addressed ${evidence} rubric point${evidence === 1 ? '' : 's'}.`,
         instruction: 'To improve, justify your approach and include one concrete example or trade-off.',
         tone: 'good', accuracy: Math.round(acc), depth: Math.round(dep), clarity: Math.round(cla),
-        strengths: matchedHints.slice(0, 3), gaps: hints.filter(h => !matchedHints.includes(h)).slice(0, 2),
-        commentary: `"Good understanding demonstrated. Your grasp of ${matchedHints[0]} shows solid foundational knowledge."`,
+        strengths: (matchedHints.length ? matchedHints : matchedRubric).slice(0, 3), gaps: hints.filter(h => !matchedHints.includes(h)).slice(0, 2),
+        commentary: '"Good understanding demonstrated against the selected rubric."',
         action: 'proceed'
       })
     }
@@ -299,36 +725,43 @@ function App() {
     return () => window.clearInterval(timer)
   }, [examStarted, feedback, nextQuestion, secondsPerQuestion])
 
+  useEffect(() => {
+    if (activeView !== 'practice-session' || practiceQuestions.length === 0) return
+    const timer = window.setInterval(() => {
+      setPracticeTime((time) => {
+        if (time <= 1) {
+          finishPractice()
+          return 0
+        }
+        return time - 1
+      })
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [activeView, finishPractice, practiceQuestions.length])
+
   const overallScore = feedback ? Math.round((feedback.accuracy + feedback.depth + feedback.clarity) / 3) : 0
 
   return (
     <main className={`app-shell ${theme === 'light' ? 'theme-light' : ''}`}>
+      <aside className="app-sidebar">
+        <a className="brand sidebar-brand" href="#top">
+          <div className="brand-icon" aria-hidden="true"><BookOpen size={21} strokeWidth={2.2} /></div>
+          <div className="brand-text"><div className="brand-name">Viva<span>Bank</span></div><span className="sidebar-caption">Academic practice</span></div>
+        </a>
+        <div className="sidebar-label">Workspace</div>
+        <nav className="sidebar-nav" aria-label="Primary navigation">
+          <button className={activeView === 'dashboard' ? 'active' : ''} type="button" onClick={() => navigate('dashboard')}><LayoutDashboard size={17} /> Dashboard</button>
+          <button className={activeView === 'subjects' || activeView === 'subject-detail' ? 'active' : ''} type="button" onClick={() => navigate('subjects')}><Library size={17} /> Subjects</button>
+          <button className={activeView === 'question-detail' || activeView === 'practice-session' || activeView === 'practice-results' ? 'active' : ''} type="button" onClick={() => { setPracticeQuestions([]); setActiveView('practice-session'); setActiveDialog(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }}><Compass size={17} /> Practice</button>
+          <button className={activeView === 'bookmarks' ? 'active' : ''} type="button" onClick={() => navigate('bookmarks')}><Bookmark size={17} /> Bookmarks</button>
+        </nav>
+        <div className="sidebar-footer"><span className="sidebar-label">Your progress</span><strong>62%</strong><div className="sidebar-progress"><span /></div><small>Keep your study streak going.</small></div>
+      </aside>
       {/* ── Top Bar ── */}
       <header className="topbar">
-        <a className="brand" href="#top">
-          <div className="brand-icon" aria-hidden="true">
-            <BookOpen size={21} strokeWidth={2.2} />
-          </div>
-          <div className="brand-text">
-            <div className="brand-name">Viva<span>Bank</span></div>
-          </div>
-        </a>
+        <div className="mobile-brand"><BookOpen size={19} /> Viva<span>Bank</span></div>
+        <label className="topbar-search"><Search size={16} /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search your study space" /></label>
         <nav className="nav-actions">
-          <button
-            className={`nav-link${activeView === 'dashboard' ? ' nav-link-active' : ''}`}
-            type="button"
-            onClick={() => setActiveView('dashboard')}
-          >
-            ⊞ Dashboard
-          </button>
-          <button
-            className={`nav-link${activeView === 'practice' ? ' nav-link-active' : ''}`}
-            type="button"
-            onClick={() => setActiveView('practice')}
-          >
-            ◈ Practice
-          </button>
-          <button className="nav-link" type="button" onClick={openQuestionBank}>▣ Question Bank</button>
           <button
             className="btn-theme-toggle"
             type="button"
@@ -392,40 +825,49 @@ function App() {
         </aside>
       )}
 
-      {/* ── Dashboard or Practice View ── */}
-      {activeView === 'dashboard' ? (
+      {/* ── Routed workspace ── */}
+      {activeView === 'practice-session' && practiceQuestions.length === 0 ? (
+        <section className="workspace-page practice-setup-page">
+          <div className="page-heading"><div><span className="eyebrow">Practice engine</span><h1>Build a focused session</h1><p>Choose a mode and difficulty. Questions are randomized from the curated Computer Networks bank.</p></div></div>
+          <div className="practice-setup-grid"><article className="content-card"><span className="eyebrow">Question mode</span><h2>How do you want to practice?</h2><div className="mode-options"><button type="button" className={practiceMode === 'mcq' ? 'selected' : ''} onClick={() => setPracticeMode('mcq')}><strong>Multiple choice</strong><span>Fast concept checks with instant scoring.</span></button><button type="button" className={practiceMode === 'short' ? 'selected' : ''} onClick={() => setPracticeMode('short')}><strong>Short answer</strong><span>Write explanations and test recall.</span></button></div></article><article className="content-card"><span className="eyebrow">Difficulty</span><h2>Set your challenge</h2><div className="difficulty-options">{(['Easy', 'Medium', 'Hard'] as Difficulty[]).map((level) => <button key={level} type="button" className={practiceDifficulty === level ? 'selected' : ''} onClick={() => setPracticeDifficulty(level)}>{level}</button>)}</div><button className="primary-action setup-start" type="button" onClick={startPractice}>Start randomized session <ChevronRight size={16} /></button></article></div>
+        </section>
+      ) : activeView === 'practice-session' ? (
+        <PracticePage questions={practiceQuestions} index={practiceIndex} answers={practiceAnswers} timeRemaining={practiceTime} mode={practiceMode} difficulty={practiceDifficulty} onAnswer={(answer) => setPracticeAnswers((current) => ({ ...current, [practiceQuestions[practiceIndex].id]: answer }))} onNext={() => setPracticeIndex((index) => Math.min(index + 1, practiceQuestions.length - 1))} onFinish={finishPractice} onExit={() => navigate('dashboard')} />
+      ) : activeView === 'practice-results' && lastAttempt ? (
+        <ResultsPage attempt={lastAttempt} questions={practiceQuestions} answers={practiceAnswers} history={attemptHistory} onStart={() => { setPracticeQuestions([]); navigate('practice-session') }} onReview={openCuratedQuestion} onBack={() => navigate('dashboard')} />
+      ) : activeView === 'dashboard' ? (
         <Dashboard
           candidateName={candidateName}
           onStartViva={(subject) => { setSelectedSubject(subject); setActiveDialog('viva') }}
-          onOpenQuestionBank={openQuestionBank}
+          onOpenQuestionBank={() => navigate('bookmarks')}
         />
       ) : (
-        <section className="subject-section" id="subjects">
-          <div className="section-header">
-            <div>
-              <h2>Select Subject to Practice</h2>
-              <p>Choose a course syllabus to initiate your viva examination</p>
-            </div>
-            <a href="#custom" className="custom-upload-link">Custom Syllabus / Code Upload →</a>
-          </div>
-          <div className="subjects-grid">
-            {subjects.map((subject) => (
-              <button type="button" key={subject.name} className="subject-card" onClick={() => { setSelectedSubject(subject.name); setActiveDialog('viva') }}>
-                <div className="card-top">
-                  <div className={`card-icon ${subject.color}`}>{subject.icon}</div>
-                  <span className="card-code">{subject.code}</span>
-                </div>
-                <div className="card-title">{subject.name}</div>
-                <div className="card-desc">{subject.desc}</div>
-                <div className="card-topics-label">KEY TOPICS</div>
-                <div className="card-topics">
-                  {subject.topics.map(t => <span key={t} className="topic-pill">{t}</span>)}
-                </div>
-                <div className="card-start">Start {subject.code} Viva <span className="arrow">→</span></div>
-              </button>
-            ))}
-          </div>
-        </section>
+        <StudyPage
+          subjects={subjects}
+          page={activeView}
+          onStartPractice={() => { setPracticeQuestions([]); navigate('practice-session') }}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          selectedQuestion={curatedQuestions.find((question) => question.id === selectedQuestionId) ?? curatedQuestions[0]}
+          bookmarkedIds={bookmarkedIds}
+          revisedIds={revisedIds}
+          onToggleBookmark={(id) => toggleSetValue(setBookmarkedIds, id, 'vivabank-bookmarks')}
+          onToggleRevised={(id) => toggleSetValue(setRevisedIds, id, 'vivabank-revised')}
+          revealedAnswer={revealedAnswer}
+          onToggleAnswer={() => setRevealedAnswer((value) => !value)}
+          selectedSubject={activeView === 'bookmarks' ? 'bookmarks' : activeView === 'question-detail' ? 'question' : selectedPageSubject}
+          onBack={() => navigate('subjects')}
+          onOpenQuestion={openCuratedQuestion}
+          onOpenSubject={(subject) => {
+            setSelectedPageSubject(subject)
+            if (activeView === 'subjects') {
+              navigate('subject-detail')
+            } else {
+              setSelectedSubject(subject)
+              setActiveDialog('viva')
+            }
+          }}
+        />
       )}
 
       {/* ── Exam Room ── */}
@@ -477,6 +919,7 @@ function App() {
             <div className="question-area">
               <div className="question-meta">
                 <span className="topic-badge">Topic: {currentSubjectData?.name || selectedSubject}</span>
+                {currentGeneratedQuestion && <span className="ai-generated-badge">AI-generated · validated</span>}
                 <span className="candidate-name">Candidate: {candidateName}</span>
               </div>
 
@@ -546,6 +989,14 @@ function App() {
                     <div className="commentary-header">🔊 Examiner Commentary ({examiners[selectedExaminer].name}):</div>
                     <div className="commentary-text">{feedback.commentary}</div>
                   </div>
+
+                  {currentGeneratedQuestion && (
+                    <div className="ai-model-answer">
+                      <strong>Model answer</strong>
+                      <p>{currentGeneratedQuestion.modelAnswer}</p>
+                      <small>Rubric: {currentGeneratedQuestion.rubric.join(' · ')}</small>
+                    </div>
+                  )}
 
                   <div className="strengths-gaps">
                     <div className="strength-section">
@@ -710,6 +1161,20 @@ function App() {
                   </div>
                 )}
 
+                <div className="ai-generation-section">
+                  <div className="persona-section-label">AI Question Generator</div>
+                  <p className="ai-generated-note">Generate validated questions for a specific unit and experiment. AI-generated content is labelled and can fall back to the curated bank if unavailable.</p>
+                  <div className="ai-generation-grid">
+                    <label className="field-group"><span className="field-label">Unit</span><select className="text-input" value={vivaUnit} onChange={(event) => setVivaUnit(event.target.value)}>{(subjects.find((subject) => subject.name === selectedSubject)?.topics ?? computerNetworksTopics).map((topic) => <option key={topic}>{topic}</option>)}</select></label>
+                    <label className="field-group"><span className="field-label">Experiment</span><input className="text-input" value={vivaExperiment} onChange={(event) => setVivaExperiment(event.target.value)} placeholder="e.g. Socket Programming Lab" /></label>
+                    <label className="field-group"><span className="field-label">Difficulty</span><select className="text-input" value={vivaDifficulty} onChange={(event) => setVivaDifficulty(event.target.value as Difficulty)}><option>Easy</option><option>Medium</option><option>Hard</option></select></label>
+                    <label className="field-group"><span className="field-label">Question type</span><select className="text-input" value={vivaQuestionType} onChange={(event) => setVivaQuestionType(event.target.value as GeneratedQuestionType)}><option value="short-answer">Short answer</option><option value="conceptual">Conceptual</option><option value="mcq">MCQ</option><option value="follow-up">Follow-up</option></select></label>
+                  </div>
+                  <button className="secondary-action" type="button" onClick={generateVivaQuestions} disabled={generationStatus === 'loading'}>{generationStatus === 'loading' ? 'Generating…' : 'Generate AI questions'}</button>
+                  {generationStatus === 'error' && <p className="ai-generation-error">{generationError}</p>}
+                  {generatedQuestions.length > 0 && <p className="ai-generation-success">✓ {generatedQuestions.length} AI-generated questions validated and ready.</p>}
+                </div>
+
                 <div className="persona-section-label">Select AI Examiner Persona</div>
                 <div className="persona-grid">
                   {examiners.map((ex, i) => (
@@ -750,7 +1215,7 @@ function App() {
                   </div>
                 </div>
 
-                <button className="btn-begin-exam" type="button" onClick={startExam}>▶ Begin Practical Viva Exam</button>
+                <button className="btn-begin-exam" type="button" onClick={startExam}>▶ Begin {generatedQuestions.length > 0 ? 'AI Viva' : 'Practical Viva Exam'}</button>
               </>
             ) : (
               <>

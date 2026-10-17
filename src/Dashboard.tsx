@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import './Dashboard.css'
 
 /* ────────────────────────────────────────────────────────────────
@@ -129,48 +129,18 @@ const recentQuestions = [
   },
 ]
 
-const practicals = [
-  {
-    id: 1,
-    day: '20',
-    month: 'Oct',
-    name: 'Socket Programming Lab',
-    subject: 'Computer Networks — CS301',
-    time: '10:00 AM',
-    status: 'urgent' as const,
-    accentColor: '#fbbf24',
-  },
-  {
-    id: 2,
-    day: '23',
-    month: 'Oct',
-    name: 'AVL Tree Implementation',
-    subject: 'Data Structures — CS201',
-    time: '02:00 PM',
-    status: 'upcoming' as const,
-    accentColor: '#7c3aed',
-  },
-  {
-    id: 3,
-    day: '27',
-    month: 'Oct',
-    name: 'Process Scheduling Simulation',
-    subject: 'Operating Systems — CS302',
-    time: '11:00 AM',
-    status: 'upcoming' as const,
-    accentColor: '#7c3aed',
-  },
-  {
-    id: 4,
-    day: '30',
-    month: 'Oct',
-    name: 'SQL Query Optimization',
-    subject: 'Database Systems — CS303',
-    time: '03:30 PM',
-    status: 'soon' as const,
-    accentColor: '#06b6d4',
-  },
-]
+interface Practical {
+  id: number
+  day: string
+  month: string
+  name: string
+  subject: string
+  time: string
+  status: 'urgent' | 'upcoming' | 'soon'
+  accentColor: string
+}
+
+const practicals: Practical[] = []
 
 /* ────────────────────────────────────────────────────────────────
    Calendar helpers
@@ -194,7 +164,7 @@ function buildCalendarGrid(monthShort: string, year: number) {
   return { cells, monthIdx, monthName: MONTH_NAMES[monthIdx] }
 }
 
-function downloadICS(p: { name: string; subject: string; day: string; month: string; time: string }, year: number) {
+function downloadICS(p: Practical, year: number) {
   const monthIdx = MONTH_SHORT[p.month] ?? 9
   const mm = String(monthIdx + 1).padStart(2, '0')
   const dd = p.day.padStart(2, '0')
@@ -260,28 +230,48 @@ export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateNa
     .slice(0, 2)
 
   const YEAR = 2026
+  const [savedPracticals, setSavedPracticals] = useState<Practical[]>([])
+  const [savedIds, setSavedIds] = useState<Set<number>>(new Set())
   const [calendarOpenId, setCalendarOpenId] = useState<number | null>(null)
-  const [savedIds, setSavedIds]             = useState<Set<number>>(new Set())
   const [browseOpen, setBrowseOpen]         = useState(false)
   const popoverRef = useRef<HTMLDivElement>(null)
+  const legacyBrowseEnabled = false
+  const [calendarMonth, setCalendarMonth] = useState('Oct')
+  const [selectedDate, setSelectedDate] = useState<{ day: number; month: string } | null>(null)
+  const [practicalName, setPracticalName] = useState('')
+  const [practicalSubject, setPracticalSubject] = useState('')
+  const [practicalTime, setPracticalTime] = useState('')
+  const calendar = buildCalendarGrid(calendarMonth, YEAR)
 
-  // Close popover when clicking outside
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        setCalendarOpenId(null)
-      }
-    }
-    if (calendarOpenId !== null) {
-      document.addEventListener('mousedown', handleClick)
-    }
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [calendarOpenId])
+  function openBrowseCalendar() {
+    setBrowseOpen(true)
+    setSelectedDate(null)
+  }
 
-  function handleSaveToCalendar(p: typeof practicals[0]) {
+  function savePractical() {
+    if (!selectedDate || !practicalName.trim()) return
+    const practical: Practical = {
+      id: Date.now(),
+      day: String(selectedDate.day),
+      month: selectedDate.month,
+      name: practicalName.trim(),
+      subject: practicalSubject.trim() || 'Personal practical',
+      time: practicalTime || 'Time not set',
+      status: 'upcoming',
+      accentColor: '#7c3aed',
+    }
+    setSavedPracticals((previous) => [...previous, practical])
+    setSavedIds((previous) => new Set(previous).add(practical.id))
+    downloadICS(practical, YEAR)
+    setPracticalName('')
+    setPracticalSubject('')
+    setPracticalTime('')
+    setSelectedDate(null)
+  }
+
+  function handleSaveToCalendar(p: Practical) {
     downloadICS(p, YEAR)
-    setSavedIds((prev) => new Set(prev).add(p.id))
-    setCalendarOpenId(null)
+    setSavedIds((previous) => new Set(previous).add(p.id))
   }
 
 
@@ -411,8 +401,36 @@ export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateNa
               )}
             </div>
 
+            {savedPracticals.length > 0 && (
+              <div className="db-practicals-list">
+                {savedPracticals.map((p) => (
+                  <div
+                    key={p.id}
+                    className="db-practical-item"
+                    style={{ ['--accent-color' as string]: p.accentColor }}
+                  >
+                    <div className="db-practical-date-block">
+                      <div className="db-practical-day">{p.day}</div>
+                      <div className="db-practical-month">{p.month}</div>
+                    </div>
+                    <div className="db-practical-info">
+                      <div className="db-practical-name">{p.name}</div>
+                      <div className="db-practical-subject">{p.subject}</div>
+                    </div>
+                    <div className="db-practical-right">
+                      <span className="db-practical-time">{p.time}</span>
+                      <span className="db-practical-status upcoming">Upcoming</span>
+                    </div>
+                    <button type="button" className="db-cal-btn saved" onClick={() => downloadICS(p, YEAR)} aria-label={`Download ${p.name} calendar event`}>
+                      ✓
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Saved practicals list */}
-            {savedIds.size > 0 ? (
+            {savedIds.size > 0 && practicals.length > 0 ? (
               <div className="db-practicals-list">
                 {practicals.filter((p) => savedIds.has(p.id)).map((p) => {
                   const { cells, monthName } = buildCalendarGrid(p.month, YEAR)
@@ -478,7 +496,7 @@ export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateNa
                   )
                 })}
               </div>
-            ) : (
+            ) : savedPracticals.length === 0 ? (
               /* Empty state — nothing saved yet */
               <div className="db-practicals-empty">
                 <div className="db-practicals-empty-icon">🗓</div>
@@ -487,15 +505,90 @@ export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateNa
                 <button
                   type="button"
                   className="db-practicals-browse-btn"
-                  onClick={() => setBrowseOpen((v) => !v)}
+                  onClick={openBrowseCalendar}
                 >
-                  {browseOpen ? 'Close' : '+ Browse & Add Practicals'}
+                  + Browse &amp; Add Practicals
                 </button>
+              </div>
+            ) : null}
+
+            {browseOpen && (
+              <div className="db-browse-panel">
+                <div className="db-browse-panel-title">Choose a date, then tell us what you need to save</div>
+                <div className="db-cal-popover db-calendar-picker">
+                  <div className="db-cal-popover-header">
+                    <button
+                      className="db-cal-popover-close"
+                      type="button"
+                      onClick={() => setCalendarMonth(MONTH_NAMES[(MONTH_SHORT[calendarMonth] + 11) % 12].slice(0, 3))}
+                      aria-label="Previous month"
+                    >
+                      ‹
+                    </button>
+                    <span className="db-cal-month-label">{calendar.monthName} {YEAR}</span>
+                    <button
+                      className="db-cal-popover-close"
+                      type="button"
+                      onClick={() => setCalendarMonth(MONTH_NAMES[(MONTH_SHORT[calendarMonth] + 1) % 12].slice(0, 3))}
+                      aria-label="Next month"
+                    >
+                      ›
+                    </button>
+                  </div>
+                  <div className="db-cal-grid">
+                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+                      <div key={day} className="db-cal-dow">{day}</div>
+                    ))}
+                    {calendar.cells.map((day, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        className={`db-cal-cell${day === null ? ' empty' : ''}${selectedDate?.day === day && selectedDate.month === calendarMonth ? ' highlight' : ''}`}
+                        disabled={day === null}
+                        onClick={() => day !== null && setSelectedDate({ day, month: calendarMonth })}
+                      >
+                        {day ?? ''}
+                      </button>
+                    ))}
+                  </div>
+                  {selectedDate && (
+                    <div className="db-practical-form">
+                      <div className="db-cal-event-label">Add practical on {selectedDate.day} {selectedDate.month} {YEAR}</div>
+                      <input
+                        className="db-practical-input"
+                        value={practicalName}
+                        onChange={(event) => setPracticalName(event.target.value)}
+                        placeholder="What do you need to save?"
+                        autoFocus
+                      />
+                      <input
+                        className="db-practical-input"
+                        value={practicalSubject}
+                        onChange={(event) => setPracticalSubject(event.target.value)}
+                        placeholder="Subject or course (optional)"
+                      />
+                      <input
+                        className="db-practical-input"
+                        type="time"
+                        value={practicalTime}
+                        onChange={(event) => setPracticalTime(event.target.value)}
+                      />
+                      <div className="db-practical-form-actions">
+                        <button type="button" className="db-cal-save-btn" onClick={savePractical} disabled={!practicalName.trim()}>
+                          Save practical
+                        </button>
+                        <button type="button" className="db-cal-popover-close" onClick={() => setSelectedDate(null)}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Browse panel — always collapsible */}
-            {browseOpen && (
+            {/* Kept as an empty compatibility path; browse uses the date picker above. */}
+            {legacyBrowseEnabled && browseOpen && (
               <div className="db-browse-panel">
                 <div className="db-browse-panel-title">All Practicals — tap 📅 to save a date</div>
                 <div className="db-practicals-list">

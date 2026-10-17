@@ -1,42 +1,42 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 :root {
-  /* Core palette - deep navy dark theme */
-  --bg-primary: #0a0e1a;
-  --bg-secondary: #0f1525;
-  --bg-card: #111827;
-  --bg-card-hover: #151d2e;
-  --bg-elevated: #1a2235;
-  --bg-input: #0d1220;
+  /* Core palette - oxblood and warm amber dark theme */
+  --bg-primary: #130C0E;
+  --bg-secondary: #1C1115;
+  --bg-card: #2B1B21;
+  --bg-card-hover: #422A31;
+  --bg-elevated: #38232A;
+  --bg-input: #1C1115;
 
   /* Borders */
-  --border-subtle: rgba(99, 115, 155, 0.18);
-  --border-card: rgba(99, 115, 155, 0.25);
-  --border-highlight: rgba(139, 92, 246, 0.4);
-  --border-active: #7c3aed;
+  --border-subtle: #493039;
+  --border-card: #493039;
+  --border-highlight: #63404A;
+  --border-active: #F5A623;
 
   /* Text */
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-accent: #a78bfa;
+  --text-primary: #F7F0ED;
+  --text-secondary: #B9A5AA;
+  --text-muted: #927D83;
+  --text-accent: #FFE0A3;
 
   /* Accents */
-  --purple-primary: #7c3aed;
-  --purple-light: #a78bfa;
-  --purple-glow: rgba(124, 58, 237, 0.25);
+  --purple-primary: #F5A623;
+  --purple-light: #FFC15C;
+  --purple-glow: rgba(245, 166, 35, 0.2);
   --green-primary: #22c55e;
   --green-bg: rgba(34, 197, 94, 0.12);
   --green-border: rgba(34, 197, 94, 0.3);
-  --blue-primary: #3b82f6;
-  --blue-bg: rgba(59, 130, 246, 0.12);
-  --orange-primary: #f59e0b;
-  --orange-bg: rgba(245, 158, 11, 0.12);
-  --red-primary: #ef4444;
-  --red-bg: rgba(239, 68, 68, 0.12);
+  --blue-primary: #F5A623;
+  --blue-bg: #352516;
+  --orange-primary: #F5A623;
+  --orange-bg: #352516;
+  --red-primary: #FDA4AF;
+  --red-bg: #30191D;
   --cyan-primary: #06b6d4;
   --pink-primary: #ec4899;
-  --yellow-primary: #eab308;
+  --yellow-primary: #FDE68A;
 
   /* Typography */
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
@@ -45,7 +45,7 @@
   /* Shadows */
   --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
   --shadow-elevated: 0 12px 40px rgba(0, 0, 0, 0.5);
-  --shadow-glow-purple: 0 0 30px rgba(124, 58, 237, 0.15);
+  --shadow-glow-purple: 0 0 30px rgba(245, 158, 11, 0.15);
 
   font-family: var(--font-sans);
   font-size: 16px;
@@ -84,6 +84,12 @@ button {
   cursor: pointer;
   border: none;
   background: none;
+}
+
+button:focus-visible, a:focus-visible, input:focus-visible,
+textarea:focus-visible, select:focus-visible {
+  outline: 2px solid var(--purple-light);
+  outline-offset: 3px;
 }
 
 input, textarea, select {
