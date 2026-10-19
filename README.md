@@ -56,7 +56,23 @@ The application includes:
 - A dedicated practice workspace for MCQ and short-answer sessions.
 - An AI viva workspace with question configuration, examiner personas, timer controls, answer submission, and review feedback.
 
-> Screenshots should be refreshed as the authenticated dashboard and viva flows are updated.
+#### Dashboard
+
+![VivaBank dashboard](./docs/screenshots/dashboard.png)
+
+The dashboard brings together course cards, syllabus completion, verified study activity, and the next recommended study actions.
+
+#### Subject details
+
+![VivaBank subject details](./docs/screenshots/subject-details.png)
+
+Each subject has its own syllabus tracks and topic completion state, so progress is tied to the selected course rather than a generic question pool.
+
+#### Practice setup
+
+![VivaBank practice setup](./docs/screenshots/practice-setup.png)
+
+Students choose the question mode and difficulty before starting a randomized session. MCQ and short-answer sessions use separate question selection rules.
 
 ## Main technology
 
