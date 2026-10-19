@@ -1073,12 +1073,6 @@ function AppShell() {
           >
             {theme === 'dark' ? '☀ Light' : '☾ Dark'}
           </button>
-          <button className="btn-setup-db" type="button" onClick={() => setActiveDialog('db')} title="Configure Supabase PostgreSQL database storage">
-            🗄️ Database <span className={`dot ${dbStatus.isConfigured ? 'active' : ''}`} />
-          </button>
-          <button className="btn-setup-key" type="button" onClick={() => setActiveDialog('key')}>
-            ⌕ Setup Gemini Key <span className={`dot ${savedKey ? 'active' : ''}`} />
-          </button>
           <button className="btn-start-viva" type="button" onClick={() => setActiveDialog('viva')}>
             ▶ Start Viva
           </button>
