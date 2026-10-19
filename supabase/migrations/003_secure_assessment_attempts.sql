@@ -39,6 +39,7 @@ VALUES
   'C = B log2(1 + SNR) = approximately 29.9 kbps.',
   'Shannon capacity is an upper bound for a noisy channel.',
   'Hard', ARRAY['Shannon', 'capacity', 'numerical'], 'curated',
+  'MUJ CS301 syllabus · Physical Layer', true,
   '{"accepted_answers":["29.9 kbps","29.9 kilobits","29.9 kilobit"]}'::jsonb
 ),
 (
