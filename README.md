@@ -90,15 +90,8 @@ npm install
 npm run dev
 ```
 
-Create `.env.local`:
 
-```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
-GEMINI_API_KEY=your-server-side-gemini-key
-```
 
-Never commit database passwords, Supabase service-role keys, authentication tokens, or Gemini secrets.
 
 ## Supabase database
 
