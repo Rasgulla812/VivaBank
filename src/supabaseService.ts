@@ -57,6 +57,16 @@ function requireAuthenticatedClient() {
   return client
 }
 
+function assessmentPersistenceError(error: { code?: string; message?: string }): Error {
+  if (error.code === 'PGRST202' || error.code === 'PGRST205' || error.message?.toLowerCase().includes('could not find the function')) {
+    return new Error('The Supabase assessment RPC is missing. Apply 003_secure_assessment_attempts.sql in the connected Supabase project, then refresh.')
+  }
+  if (error.code === '42P01' || error.message?.toLowerCase().includes('does not exist')) {
+    return new Error('The Supabase assessment tables are missing. Apply 003_secure_assessment_attempts.sql in the connected Supabase project, then refresh.')
+  }
+  return new Error(error.message || 'Supabase could not create the assessment attempt.')
+}
+
   export async function startAssessmentAttempt(params: {
     subjectCode: string
     assessmentType: 'quiz' | 'exam'
@@ -70,7 +80,7 @@ function requireAuthenticatedClient() {
       p_question_ids: params.questionIds,
       p_idempotency_key: params.idempotencyKey,
     })
-    if (error) throw error
+    if (error) throw assessmentPersistenceError(error)
     const row = Array.isArray(data) ? data[0] : data
     if (!row?.attempt_id) throw new Error('The server did not create the assessment attempt.')
     return {
@@ -91,7 +101,7 @@ function requireAuthenticatedClient() {
         answer: answer.answer,
       })),
     })
-    if (error) throw error
+    if (error) throw assessmentPersistenceError(error)
     const row = Array.isArray(data) ? data[0] : data
     if (!row?.attempt_id) throw new Error('The server did not return the assessment result.')
     return {
