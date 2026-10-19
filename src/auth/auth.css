@@ -1,0 +1,23 @@
+.auth-page { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #120d0f; color: #f7f0ed; }
+.auth-card { width: min(100%, 440px); padding: 38px; border: 1px solid #493039; border-radius: 20px; background: #211d20; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+.auth-brand { display: flex; align-items: center; gap: 10px; font-size: 21px; font-weight: 800; }
+.auth-brand > span > span { color: #ffc15c; }
+.auth-brand-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; color: #130c0e; background: #f5a623; }
+.auth-eyebrow { margin-top: 34px; color: #ffc15c; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.auth-card h1 { margin-top: 8px; font-size: clamp(26px, 5vw, 34px); }
+.auth-subtitle { margin-top: 8px; color: #6b6467; font-size: 14px; }
+.auth-form { display: grid; gap: 17px; margin-top: 26px; }
+.auth-field { display: grid; gap: 7px; color: #6b6467; font-size: 13px; font-weight: 700; }
+.auth-input-wrap { display: flex; align-items: center; gap: 9px; padding: 11px 12px; border: 1px solid #493039; border-radius: 10px; color: #927d83; background: #130c0e; }
+.auth-input-wrap:focus-within { border-color: #f5a623; }
+.auth-input-wrap input { width: 100%; border: 0; outline: 0; color: #6b6467; background: transparent; font-size: 14px; }
+.auth-visibility { display: grid; place-items: center; padding: 2px; color: #b9a5aa; }
+.auth-submit { padding: 12px; border-radius: 10px; color: #130c0e; background: #f5a623; font-weight: 800; }
+.auth-submit:disabled { cursor: not-allowed; opacity: .55; }
+.auth-switch { margin-top: 22px; text-align: center; color: #6b6467; font-size: 13px; }
+.auth-switch button { color: #ffc15c; font-weight: 800; }
+.auth-alert { margin-top: 18px; padding: 11px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45; }
+.auth-alert.error { border: 1px solid rgba(253,164,175,.35); color: #fecdd3; background: #30191d; }
+.auth-alert.success { border: 1px solid rgba(34,197,94,.35); color: #bbf7d0; background: rgba(34,197,94,.1); }
+.auth-resend { display: block; margin-top: 8px; color: #ffc15c; font-weight: 800; text-decoration: underline; }
+@media (max-width: 480px) { .auth-card { padding: 28px 22px; } }

@@ -2,12 +2,12 @@
 
 :root {
   /* Core palette - oxblood and warm amber dark theme */
-  --bg-primary: #130C0E;
-  --bg-secondary: #1C1115;
-  --bg-card: #2B1B21;
-  --bg-card-hover: #422A31;
-  --bg-elevated: #38232A;
-  --bg-input: #1C1115;
+  --bg-primary: #120D0F;
+  --bg-secondary: #2B2025;
+  --bg-card: #211D20;
+  --bg-card-hover: #332A2E;
+  --bg-elevated: #2B2025;
+  --bg-input: #211D20;
 
   /* Borders */
   --border-subtle: #493039;
@@ -19,6 +19,7 @@
   --text-primary: #F7F0ED;
   --text-secondary: #B9A5AA;
   --text-muted: #927D83;
+  --content-text: #6B6467;
   --text-accent: #FFE0A3;
 
   /* Accents */

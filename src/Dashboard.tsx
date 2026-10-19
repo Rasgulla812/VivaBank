@@ -1,5 +1,16 @@
 import { useState, useRef } from 'react'
 import './Dashboard.css'
+import {
+  type LearningMetricsData,
+  getAllSubjectsProgress,
+  getXPStats,
+  getStreakStats,
+  getLeagueStats,
+  getAllExamStats,
+  getTotalExamsTaken,
+  getSubjectProgress,
+} from './metrics'
+import type { LeaderboardEntry } from './supabaseService'
 
 /* ────────────────────────────────────────────────────────────────
    Types
@@ -8,6 +19,9 @@ interface DashboardProps {
   onStartViva: (subject: string) => void
   onOpenQuestionBank: () => void
   candidateName: string
+  metrics: LearningMetricsData
+  onOpenSubject?: (subject: string) => void
+  leaderboard: LeaderboardEntry[] | null
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -17,10 +31,6 @@ const dashSubjects = [
   {
     name: 'Computer Networks',
     code: 'CS301',
-    topics: 7,
-    subtopics: 54,
-    progress: 62,
-    progressColor: '#7c3aed',
     bg: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&auto=format&fit=crop',
     board: 'MUJ',
     level: 'B.Tech',
@@ -28,10 +38,6 @@ const dashSubjects = [
   {
     name: 'Data Structures',
     code: 'CS201',
-    topics: 9,
-    subtopics: 81,
-    progress: 78,
-    progressColor: '#3b82f6',
     bg: 'https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=600&auto=format&fit=crop',
     board: 'MUJ',
     level: 'B.Tech',
@@ -39,10 +45,6 @@ const dashSubjects = [
   {
     name: 'Operating Systems',
     code: 'CS302',
-    topics: 8,
-    subtopics: 73,
-    progress: 45,
-    progressColor: '#22c55e',
     bg: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&auto=format&fit=crop',
     board: 'MUJ',
     level: 'B.Tech',
@@ -50,10 +52,6 @@ const dashSubjects = [
   {
     name: 'Database Systems',
     code: 'CS303',
-    topics: 6,
-    subtopics: 49,
-    progress: 55,
-    progressColor: '#ec4899',
     bg: 'https://images.unsplash.com/photo-1544383835-bda2bc66a55d?w=600&auto=format&fit=crop',
     board: 'MUJ',
     level: 'B.Tech',
@@ -61,10 +59,6 @@ const dashSubjects = [
   {
     name: 'Machine Learning',
     code: 'AI401',
-    topics: 11,
-    subtopics: 97,
-    progress: 33,
-    progressColor: '#f59e0b',
     bg: 'https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=600&auto=format&fit=crop',
     board: 'MUJ',
     level: 'B.Tech',
@@ -72,60 +66,9 @@ const dashSubjects = [
   {
     name: 'Web Engineering',
     code: 'CS204',
-    topics: 5,
-    subtopics: 38,
-    progress: 88,
-    progressColor: '#06b6d4',
     bg: 'https://images.unsplash.com/photo-1547658719-da2b51169166?w=600&auto=format&fit=crop',
     board: 'MUJ',
     level: 'B.Tech',
-  },
-]
-
-const recentQuestions = [
-  {
-    id: 1,
-    question: 'Explain TCP three-way handshake and its purpose',
-    subject: 'Computer Networks',
-    topic: 'TCP/IP',
-    timeAgo: '2h ago',
-    score: 78,
-    tone: 'good' as const,
-    iconBg: '#7c3aed',
-    icon: '⚙',
-  },
-  {
-    id: 2,
-    question: 'Describe Banker\'s Algorithm for deadlock avoidance',
-    subject: 'Operating Systems',
-    topic: 'Deadlocks',
-    timeAgo: 'Yesterday',
-    score: 52,
-    tone: 'needs-work' as const,
-    iconBg: '#22c55e',
-    icon: '⊞',
-  },
-  {
-    id: 3,
-    question: 'Compare B+ tree vs Hash indexing in databases',
-    subject: 'Database Systems',
-    topic: 'Indexing',
-    timeAgo: '3 days ago',
-    score: 91,
-    tone: 'good' as const,
-    iconBg: '#ec4899',
-    icon: '▤',
-  },
-  {
-    id: 4,
-    question: 'Explain gradient descent and its variants',
-    subject: 'Machine Learning',
-    topic: 'Optimization',
-    timeAgo: '4 days ago',
-    score: 44,
-    tone: 'needs-work' as const,
-    iconBg: '#f59e0b',
-    icon: '⚡',
   },
 ]
 
@@ -200,28 +143,21 @@ function downloadICS(p: Practical, year: number) {
   URL.revokeObjectURL(a.href)
 }
 
-const prepProgress = [
-  { label: 'Comp. Networks', pct: 62, color: '#7c3aed' },
-  { label: 'Data Structures', pct: 78, color: '#3b82f6' },
-  { label: 'OS', pct: 45, color: '#22c55e' },
-  { label: 'Databases', pct: 55, color: '#ec4899' },
-  { label: 'ML & AI', pct: 33, color: '#f59e0b' },
-  { label: 'Web Engg.', pct: 88, color: '#06b6d4' },
-]
-
-const examScores = [
-  { subject: 'Comp. Networks', pct: 72, color: '#7c3aed' },
-  { subject: 'Data Structures', pct: 85, color: '#3b82f6' },
-  { subject: 'Op. Systems', pct: 48, color: '#22c55e' },
-  { subject: 'Databases', pct: 91, color: '#ec4899' },
-  { subject: 'ML & AI', pct: 37, color: '#f59e0b' },
-  { subject: 'Web Engg.', pct: 95, color: '#06b6d4' },
-]
-
 /* ────────────────────────────────────────────────────────────────
    Component
 ──────────────────────────────────────────────────────────────── */
-export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateName }: DashboardProps) {
+export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateName, metrics, onOpenSubject, leaderboard }: DashboardProps) {
+  const prepProgressList = getAllSubjectsProgress(metrics)
+  const xpStats = getXPStats(metrics)
+  const streakStats = getStreakStats(metrics)
+  const currentUserId = typeof window !== 'undefined' ? window.localStorage.getItem('vivabank_user_id') : null
+  const leaderboardUser = leaderboard?.find((entry) => entry.userId === currentUserId)
+  const rankNumber = leaderboardUser
+    ? 1 + (leaderboard || []).filter((entry) => entry.lifetimeXp > leaderboardUser.lifetimeXp).length
+    : null
+  const leagueStats = getLeagueStats(xpStats.totalXP, rankNumber)
+  const examStatsList = getAllExamStats(metrics)
+  const totalExamsTaken = getTotalExamsTaken(metrics)
   const initials = candidateName
     .split(' ')
     .map((n) => n[0])
@@ -292,7 +228,7 @@ export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateNa
         </div>
       </div>
 
-      {/* ── Continue Studying Banners ── */}
+      {/* ── Study Banners ── */}
       <div className="continue-banners">
         <div className="continue-card primary" onClick={() => onStartViva('Computer Networks')} role="button" tabIndex={0}>
           <div className="continue-card-left">
@@ -301,12 +237,12 @@ export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateNa
               Continue where you left off
             </div>
             <div className="continue-subject">Computer Networks</div>
-            <div className="continue-topic">TCP/IP Protocols &amp; ARP</div>
+            <div className="continue-topic">Start a verified study session</div>
           </div>
           <div className="continue-card-right">
             <div className="continue-last-studied">
               Last Studied
-              <strong>Yesterday</strong>
+              <strong>              No session recorded</strong>
             </div>
             <button className="continue-btn" type="button">
               Start »
@@ -321,12 +257,12 @@ export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateNa
               Your lesson of the day
             </div>
             <div className="continue-subject">Operating Systems</div>
-            <div className="continue-topic">Deadlock Detection</div>
+            <div className="continue-topic">Start a verified study session</div>
           </div>
           <div className="continue-card-right">
             <div className="continue-last-studied">
               Last Studied
-              <strong>3 days ago</strong>
+              <strong>Not available yet</strong>
             </div>
             <button className="continue-btn" type="button">
               Start »
@@ -347,46 +283,49 @@ export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateNa
               <span className="db-section-link" onClick={() => {}}>Edit subjects +</span>
             </div>
             <div className="db-subjects-grid">
-              {dashSubjects.map((sub) => (
-                <div
-                  key={sub.code}
-                  className="db-subject-card"
-                  onClick={() => onStartViva(sub.name)}
-                  role="button"
-                  tabIndex={0}
-                >
+              {dashSubjects.map((sub) => {
+                const subProg = getSubjectProgress(metrics, sub.code)
+                return (
                   <div
-                    className="db-subject-card-image"
-                    style={{ backgroundImage: `url(${sub.bg})` }}
-                  />
-                  <div className="db-subject-card-overlay" />
+                    key={sub.code}
+                    className="db-subject-card"
+                    onClick={() => onOpenSubject ? onOpenSubject(sub.name) : onStartViva(sub.name)}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div
+                      className="db-subject-card-image"
+                      style={{ backgroundImage: `url(${sub.bg})` }}
+                    />
+                    <div className="db-subject-card-overlay" />
 
-                  <div className="db-subject-card-meta">
-                    <div className="db-subject-stats">
-                      <span className="db-subject-stat">{sub.topics} Topics</span>
-                      <span className="db-subject-stat">{sub.subtopics} Subtopics</span>
+                    <div className="db-subject-card-meta">
+                      <div className="db-subject-stats">
+                        <span className="db-subject-stat">{subProg.topicsCompletedCount}/{subProg.totalTopics} Topics</span>
+                        <span className="db-subject-stat">{subProg.questionsAttempted} Attempted</span>
+                      </div>
+                      <div className="db-subject-badge">
+                        <span>{sub.board}</span>
+                        <span>{sub.level}</span>
+                      </div>
                     </div>
-                    <div className="db-subject-badge">
-                      <span>{sub.board}</span>
-                      <span>{sub.level}</span>
+
+                    <div className="db-subject-card-content">
+                      <div className="db-subject-progress-bar">
+                        <div
+                          className="db-subject-progress-fill"
+                          style={{ width: `${subProg.completionPct}%`, background: subProg.color }}
+                        />
+                      </div>
+                      <div className="db-subject-name">{sub.name}</div>
+                      <div className="db-subject-action-row">
+                        <span className="db-subject-code">{subProg.completionPct}% syllabus</span>
+                        <span className="db-subject-chevron">›</span>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="db-subject-card-content">
-                    <div className="db-subject-progress-bar">
-                      <div
-                        className="db-subject-progress-fill"
-                        style={{ width: `${sub.progress}%`, background: sub.progressColor }}
-                      />
-                    </div>
-                    <div className="db-subject-name">{sub.name}</div>
-                    <div className="db-subject-action-row">
-                      <span className="db-subject-code">{sub.code}</span>
-                      <span className="db-subject-chevron">›</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 
@@ -677,24 +616,22 @@ export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateNa
               <span className="db-section-link" onClick={onOpenQuestionBank}>Open Bank →</span>
             </div>
             <div className="db-recent-list">
-              {recentQuestions.map((q) => (
+              {metrics.xpHistory.length === 0 ? (
+                <div className="db-empty-state">No question activity yet. Complete a quiz to see verified activity here.</div>
+              ) : metrics.xpHistory.slice(0, 4).map((q) => (
                 <div key={q.id} className="db-recent-item" role="button" tabIndex={0}>
-                  <div className="db-recent-icon" style={{ background: q.iconBg }}>
-                    {q.icon}
+                  <div className="db-recent-icon" style={{ background: '#334155' }}>
+                    ✓
                   </div>
                   <div className="db-recent-info">
-                    <div className="db-recent-question">{q.question}</div>
+                    <div className="db-recent-question">{q.action}</div>
                     <div className="db-recent-meta">
-                      <span>{q.subject}</span>
+                      <span>Verified XP event</span>
                       <span className="db-recent-meta-dot" />
-                      <span>{q.topic}</span>
-                      <span className="db-recent-meta-dot" />
-                      <span>{q.timeAgo}</span>
+                      <span>{new Date(q.date).toLocaleDateString()}</span>
                     </div>
                   </div>
-                  <div className={`db-recent-score ${q.tone}`}>
-                    {q.score}%
-                  </div>
+                  <div className="db-recent-score good">+{q.xp} XP</div>
                 </div>
               ))}
             </div>
@@ -728,22 +665,35 @@ export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateNa
             <div className="db-panel-header">
               <div className="db-panel-title">
                 📈 Prep Progress
+                <span className="db-panel-subtitle-pill">Syllabus Completion</span>
               </div>
               <button className="db-panel-btn" type="button" onClick={() => onStartViva('Computer Networks')}>
                 Study now »
               </button>
             </div>
+            <div className="db-metric-definition-note">
+              Tracks actual study completion per subject using saved questions attempted, answers correct, and topics completed.
+            </div>
             <div className="db-progress-bars">
-              {prepProgress.map((row) => (
-                <div key={row.label} className="db-progress-row">
-                  <span className="db-progress-label">{row.label}</span>
-                  <div className="db-progress-track">
-                    <div
-                      className="db-progress-fill"
-                      style={{ width: `${row.pct}%`, background: row.color }}
-                    />
+              {prepProgressList.map((row) => (
+                <div key={row.code} className="db-progress-card">
+                  <div className="db-progress-row">
+                    <span className="db-progress-label">{row.shortLabel}</span>
+                    <div className="db-progress-track">
+                      <div
+                        className="db-progress-fill"
+                        style={{ width: `${row.completionPct}%`, background: row.color }}
+                      />
+                    </div>
+                    <span className="db-progress-pct">{row.completionPct}%</span>
                   </div>
-                  <span className="db-progress-pct">{row.pct}%</span>
+                  <div className="db-progress-substats">
+                    <span>{row.topicsCompletedCount}/{row.totalTopics} topics</span>
+                    <span className="db-progress-substats-divider">·</span>
+                    <span>{row.questionsAttempted} attempted</span>
+                    <span className="db-progress-substats-divider">·</span>
+                    <span>{row.questionsCorrect} correct</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -753,41 +703,52 @@ export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateNa
           <div className="db-panel">
             <div className="db-panel-header">
               <div className="db-panel-title">
-                <div className="db-panel-count">🔥 1 923 XP</div>
+                <div className="db-panel-count">🔥 {xpStats.totalXP.toLocaleString()} XP</div>
               </div>
-              <div className="db-league-badge">🏆 Gold League</div>
+              <div className="db-league-badge">{leagueStats.tierBadge}</div>
             </div>
 
             <div className="db-stats-row">
               <div className="db-stat-block">
                 <span className="db-stat-label">Weekly XP</span>
-                <span className="db-stat-value">125</span>
-                <span className="db-stat-change up">↑ +72</span>
+                <span className="db-stat-value">{xpStats.weeklyXP}</span>
+                <span className="db-stat-caption">This week</span>
               </div>
               <div className="db-stat-block">
                 <span className="db-stat-label">All Star XP</span>
-                <span className="db-stat-value">54</span>
-                <span className="db-stat-change up">↑ +32</span>
+                <span className="db-stat-value">{xpStats.allStarXP}</span>
+                <span className="db-stat-caption">High accuracy</span>
               </div>
               <div className="db-stat-block">
                 <span className="db-stat-label">Streak</span>
-                <span className="db-stat-value">232</span>
-                <span className="db-stat-change down">↓ +2</span>
+                <span className="db-stat-value">{streakStats.streak}d</span>
+                <span className={`db-stat-badge ${streakStats.activeToday ? 'active-today' : 'pending-today'}`}>
+                  {streakStats.activeToday ? '✓ Active today' : 'Pending today'}
+                </span>
               </div>
             </div>
 
             <div className="db-leaderboard-divider" />
 
             <div className="db-xp-row">
-              <span className="db-xp-total">29 519 xp</span>
-              <span className="db-xp-next">2 895 xp until next rank</span>
+              <span className="db-xp-total">{xpStats.totalXP.toLocaleString()} xp</span>
+              <span className="db-xp-next">
+                {leagueStats.xpUntilNext > 0 ? `${leagueStats.xpUntilNext.toLocaleString()} xp until next rank` : 'Max tier achieved'}
+              </span>
             </div>
             <div className="db-xp-track">
-              <div className="db-xp-fill" style={{ width: '68%' }} />
+              <div className="db-xp-fill" style={{ width: `${leagueStats.tierFillPct}%` }} />
             </div>
             <div className="db-rank-row">
-              <span>Rank 2</span>
-              <span className="db-rank-badge">#79</span>
+              <span>{leagueStats.leagueName}</span>
+              <span className="db-rank-badge">{leaderboard === null ? 'Loading…' : leagueStats.rankBadge}</span>
+            </div>
+            <div className="db-metric-explainer-text">
+              {leaderboard === null
+                ? 'Loading verified leaderboard data…'
+                : rankNumber === null
+                  ? 'Rank is unavailable until your persisted XP appears on the leaderboard.'
+                  : 'Rank uses lifetime XP totals from eligible students; ties share the same rank.'}
             </div>
           </div>
 
@@ -795,7 +756,7 @@ export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateNa
           <div className="db-panel">
             <div className="db-panel-header">
               <div className="db-panel-title">
-                🎯 Exam Hub <span style={{ fontSize: 13, color: '#fbbf24', fontWeight: 700 }}>21</span>
+                🎯 Exam Hub {totalExamsTaken > 0 && <span style={{ fontSize: 13, color: '#fbbf24', fontWeight: 700 }}>{totalExamsTaken}</span>}
               </div>
               <button className="db-panel-btn" type="button" onClick={() => onStartViva('Computer Networks')}>
                 Take an Exam »
@@ -803,14 +764,32 @@ export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateNa
             </div>
 
             <div className="db-exam-grid">
-              {examScores.map((e) => (
-                <div key={e.subject} className="db-exam-row">
-                  <span className="db-exam-subject-name">{e.subject}</span>
+              {examStatsList.map((e) => (
+                <div key={e.code} className="db-exam-row">
+                  <div className="db-exam-header-line">
+                    <span className="db-exam-subject-name">{e.shortLabel}</span>
+                    {e.attempted ? (
+                      <span className="db-exam-attempts-badge">{e.attemptsCount} {e.attemptsCount === 1 ? 'attempt' : 'attempts'}</span>
+                    ) : (
+                      <span className="db-exam-not-attempted-badge">Not attempted</span>
+                    )}
+                  </div>
                   <div className="db-exam-score-row">
-                    <span className="db-exam-pct">{e.pct}%</span>
-                    <div className="db-exam-bar">
-                      <div className="db-exam-fill" style={{ width: `${e.pct}%`, background: e.color }} />
-                    </div>
+                    {e.attempted ? (
+                      <>
+                        <span className="db-exam-pct">{e.bestScorePct}%</span>
+                        <div className="db-exam-bar">
+                          <div className="db-exam-fill" style={{ width: `${e.bestScorePct}%`, background: e.color }} />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="db-exam-pct-placeholder">—</span>
+                        <div className="db-exam-bar empty">
+                          <div className="db-exam-fill" style={{ width: '0%' }} />
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
@@ -818,7 +797,7 @@ export default function Dashboard({ onStartViva, onOpenQuestionBank, candidateNa
 
             <div className="db-exam-total-row">
               <span className="db-exam-total-label">📊 Total Exams Taken</span>
-              <span className="db-exam-total-count">47</span>
+              <span className="db-exam-total-count">{totalExamsTaken}</span>
             </div>
           </div>
         </div>

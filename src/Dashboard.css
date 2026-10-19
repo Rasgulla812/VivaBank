@@ -821,6 +821,93 @@
   color: #fbbf24;
 }
 
+.db-panel-subtitle-pill {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 2px 7px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.db-metric-definition-note {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 2px solid var(--accent-primary, #a855f7);
+  padding: 6px 10px;
+  border-radius: 0 6px 6px 0;
+  margin-bottom: 12px;
+}
+
+.db-progress-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.015);
+  transition: background 0.2s ease;
+}
+.db-progress-card:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.db-progress-substats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-muted);
+  padding-left: 100px;
+}
+.db-progress-substats-divider {
+  opacity: 0.4;
+}
+
+.db-stat-caption {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.db-stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  margin-top: 3px;
+  width: fit-content;
+}
+.db-stat-badge.active-today {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+.db-stat-badge.pending-today {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.db-metric-explainer-text {
+  font-size: 10px;
+  color: var(--content-text);
+  line-height: 1.4;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  font-style: italic;
+}
+
 /* ── Exam Panel ── */
 .db-exam-grid {
   display: grid;
@@ -830,6 +917,32 @@
 }
 
 .db-exam-row { display: flex; flex-direction: column; gap: 4px; }
+
+.db-exam-header-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.db-exam-attempts-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.db-exam-not-attempted-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
 
 .db-exam-subject-name {
   font-size: 12px;
@@ -850,12 +963,23 @@
   min-width: 44px;
 }
 
+.db-exam-pct-placeholder {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 44px;
+}
+
 .db-exam-bar {
   flex: 1;
   height: 3px;
   border-radius: 2px;
   background: rgba(255,255,255,0.06);
   overflow: hidden;
+}
+
+.db-exam-bar.empty {
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .db-exam-fill { height: 100%; border-radius: 2px; }
@@ -1480,7 +1604,7 @@
 .app-shell:not(.theme-light) .db-stat-card,
 .app-shell:not(.theme-light) .db-practicals-panel,
 .app-shell:not(.theme-light) .db-exam-panel {
-  background: #2B1B21;
+  background: #211D20;
   border-color: #493039;
 }
 
@@ -1491,14 +1615,14 @@
 
 .app-shell:not(.theme-light) .continue-card.primary,
 .app-shell:not(.theme-light) .continue-card.secondary {
-  background: linear-gradient(135deg, #2B1B21, #38232A);
+  background: #2B2025;
   border-color: #493039;
   box-shadow: 0 8px 32px rgba(19, 12, 14, 0.28);
 }
 
 .app-shell:not(.theme-light) .continue-card.primary:hover,
 .app-shell:not(.theme-light) .continue-card.secondary:hover {
-  background: #422A31;
+  background: #332A2E;
   border-color: #63404A;
   box-shadow: 0 12px 40px rgba(19, 12, 14, 0.38);
 }
@@ -1555,7 +1679,7 @@
 
 .app-shell:not(.theme-light) .db-practical-item,
 .app-shell:not(.theme-light) .db-browse-panel {
-  background: #38232A;
+  background: #2B2025;
   border-color: #493039;
 }
 
@@ -1707,4 +1831,14 @@
 .app-shell.theme-light .db-cal-save-btn:hover {
   background: #D59A3D;
   box-shadow: 0 6px 20px rgba(183, 121, 36, 0.32);
+}
+
+.app-shell:not(.theme-light) .dashboard-meta,
+.app-shell:not(.theme-light) .continue-topic,
+.app-shell:not(.theme-light) .continue-last-studied,
+.app-shell:not(.theme-light) .db-panel-subtitle-pill,
+.app-shell:not(.theme-light) .db-progress-substats,
+.app-shell:not(.theme-light) .db-exam-not-attempted-badge,
+.app-shell:not(.theme-light) .db-metric-explainer-text {
+  color: var(--content-text);
 }

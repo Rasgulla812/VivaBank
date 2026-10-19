@@ -1,7 +1,21 @@
-import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { ArrowLeft, BookOpen, Bookmark, Check, ChevronRight, Compass, LayoutDashboard, Library, Search, SlidersHorizontal } from 'lucide-react'
 import './App.css'
-import Dashboard from './Dashboard'
+const Dashboard = lazy(() => import('./Dashboard'))
+import {
+  loadLearningMetrics,
+  recordVerifiedExam,
+  recordVerifiedQuestionAnswer,
+  toggleTopicStudyCompletion,
+  getOverallSyllabusProgress,
+  getSubjectProgress,
+  type LearningMetricsData,
+} from './metrics'
+import { getSupabaseCredentials, saveSupabaseCredentials, getOrCreateUserId } from './supabaseClient'
+import { fetchAssessmentAnswers, fetchAssessmentHistory, fetchLeaderboard, fetchMetricsFromSupabase, getDatabaseSyncStatus, startAssessmentAttempt, startVivaAssessment, submitAssessmentAttempt } from './supabaseService'
+import { useAuth } from './auth/AuthContext'
+const AuthPage = lazy(() => import('./auth/AuthPage'))
+import { saveGeneratedQuestions } from './questionsService'
 
 /* ── Subject data ── */
 const computerNetworksTopics = [
@@ -16,11 +30,11 @@ const computerNetworksTopics = [
 
 const subjects = [
   { name: 'Computer Networks', code: 'CS301', icon: '⚙', color: 'purple', desc: 'Data communications, layered architectures, transmission, reliable delivery, routing, TCP/IP, and application protocols.', topics: computerNetworksTopics },
-  { name: 'Data Structures & Algorithms', code: 'CS201', icon: '</>', color: 'blue', desc: 'Trees, Graphs, Dynamic Programming, Complexity Analysis, Sorting, and Searching.', topics: ['Binary Search Trees', 'Graph Algorithms', 'Dynamic Programming'] },
-  { name: 'Operating Systems', code: 'CS302', icon: '⊞', color: 'green', desc: 'Process management, Deadlocks, Paging, Virtual Memory, Concurrency, and System Calls.', topics: ['Deadlock Detection & Prevention', 'Virtual Memory & Paging', 'Threads & Synchronization'] },
-  { name: 'Database Systems', code: 'CS303', icon: '▤', color: 'pink', desc: 'Relational model, SQL optimization, B+ Tree indexing, Normalization, and ACID transactions.', topics: ['SQL Joins & Optimization', 'B+ Tree Indexing', 'Normalization Forms'] },
-  { name: 'Machine Learning & AI', code: 'AI401', icon: '⚡', color: 'orange', desc: 'Supervised/Unsupervised models, Neural Networks, Backpropagation, and Model Evaluation.', topics: ['Gradient Descent', 'Decision Trees', 'Neural Network Architecture'] },
-  { name: 'Web Engineering', code: 'CS204', icon: '⊕', color: 'cyan', desc: 'DOM architecture, REST APIs, GraphQL, Security (CORS/CSRF), and Web Performance.', topics: ['REST API Design', 'Authentication & JWT', 'Performance Optimization'] },
+  { name: 'Data Structures & Algorithms', code: 'CS201', icon: '</>', color: 'blue', desc: 'Trees, Graphs, Dynamic Programming, Complexity Analysis, Sorting, and Searching.', topics: ['Binary Search Trees', 'Graph Algorithms', 'Dynamic Programming', 'Sorting & Searching', 'Hash Tables', 'Heaps & Priority Queues', 'Greedy Algorithms', 'Divide & Conquer', 'Disjoint Sets'] },
+  { name: 'Operating Systems', code: 'CS302', icon: '⊞', color: 'green', desc: 'Process management, Deadlocks, Paging, Virtual Memory, Concurrency, and System Calls.', topics: ['Deadlock Detection & Prevention', 'Virtual Memory & Paging', 'Threads & Synchronization', 'CPU Scheduling', 'File Systems', 'Disk Scheduling', 'Process Synchronization', 'System Calls'] },
+  { name: 'Database Systems', code: 'CS303', icon: '▤', color: 'pink', desc: 'Relational model, SQL optimization, B+ Tree indexing, Normalization, and ACID transactions.', topics: ['SQL Joins & Optimization', 'B+ Tree Indexing', 'Normalization Forms', 'Transactions & ACID', 'Concurrency Control', 'Relational Algebra'] },
+  { name: 'Machine Learning & AI', code: 'AI401', icon: '⚡', color: 'orange', desc: 'Supervised/Unsupervised models, Neural Networks, Backpropagation, and Model Evaluation.', topics: ['Gradient Descent', 'Decision Trees', 'Neural Network Architecture', 'Support Vector Machines', 'Clustering & K-Means', 'Model Evaluation & ROC', 'Regularization & Overfitting', 'Ensemble Methods', 'CNNs & Computer Vision', 'Natural Language Processing', 'Reinforcement Learning'] },
+  { name: 'Web Engineering', code: 'CS204', icon: '⊕', color: 'cyan', desc: 'DOM architecture, REST APIs, GraphQL, Security (CORS/CSRF), and Web Performance.', topics: ['REST API Design', 'Authentication & JWT', 'Performance Optimization', 'DOM Architecture', 'Security (CORS & CSRF)'] },
 ]
 
 type Difficulty = 'Easy' | 'Medium' | 'Hard'
@@ -41,7 +55,7 @@ interface CuratedQuestion {
 
 const curatedQuestions: CuratedQuestion[] = [
   {
-    id: 'cn-tcp-handshake',
+    id: '11111111-1111-4111-8111-111111111111',
     subject: 'Computer Networks',
     branch: 'Computer Science',
     semester: 'Semester 5',
@@ -55,7 +69,7 @@ const curatedQuestions: CuratedQuestion[] = [
     source: 'MUJ CS301 syllabus · Transport Layer',
   },
   {
-    id: 'cn-subnetting',
+    id: '22222222-2222-4222-8222-222222222222',
     subject: 'Computer Networks',
     branch: 'Computer Science',
     semester: 'Semester 5',
@@ -69,7 +83,7 @@ const curatedQuestions: CuratedQuestion[] = [
     source: 'MUJ CS301 syllabus · Classless Addressing',
   },
   {
-    id: 'cn-arq',
+    id: '33333333-3333-4333-8333-333333333333',
     subject: 'Computer Networks',
     branch: 'Computer Science',
     semester: 'Semester 5',
@@ -83,7 +97,7 @@ const curatedQuestions: CuratedQuestion[] = [
     source: 'MUJ CS301 syllabus · Data Link Layer',
   },
   {
-    id: 'cn-shannon',
+    id: '44444444-4444-4444-8444-444444444444',
     subject: 'Computer Networks',
     branch: 'Computer Science',
     semester: 'Semester 5',
@@ -97,7 +111,7 @@ const curatedQuestions: CuratedQuestion[] = [
     source: 'MUJ CS301 syllabus · Channel Capacity',
   },
   {
-    id: 'cn-dns',
+    id: '55555555-5555-4555-8555-555555555555',
     subject: 'Computer Networks',
     branch: 'Computer Science',
     semester: 'Semester 5',
@@ -130,36 +144,6 @@ const questionTemplates = [
   (subject: string) => `Given a real-world scenario in ${subject}, walk me through how you would debug a critical failure.`,
 ]
 
-const computerNetworksQuestions = [
-  'Explain why layered network architectures are used. Compare the responsibilities of OSI and TCP/IP models.',
-  'Differentiate analog and digital data, and explain how channel capacity is affected by bandwidth, noise, and signal levels.',
-  'Compare guided and wireless transmission media. When is line-of-sight propagation required?',
-  'A channel has a bandwidth of 3 kHz and an SNR of 30 dB. Use Shannon capacity to estimate its maximum data rate.',
-  'Compare NRZ-L, Manchester, and differential Manchester line coding with respect to synchronization and bandwidth.',
-  'Explain PCM and delta modulation. What causes quantization noise and slope-overload distortion?',
-  'Compare asynchronous and synchronous transmission. Why is framing needed for reliable data-link communication?',
-  'Given a received bit sequence and a generator polynomial, demonstrate CRC error detection and state when the frame is rejected.',
-  'Compare Stop-and-Wait, Go-Back-N, and Selective Repeat ARQ in terms of windows, retransmissions, and link utilization.',
-  'Explain HDLC frame fields and compare PPP framing and link-control negotiation.',
-  'Compare bus, star, and ring topologies. Which failure modes are most important in each?',
-  'Explain TDMA, FDMA, CSMA, and the difference between CSMA/CD and CSMA/CA.',
-  'A 100 Mbps Ethernet link has a 10 ms round-trip propagation delay. Calculate the bandwidth-delay product and explain its meaning.',
-  'Explain ARP, RARP, ICMP, and NAT, and describe where each operates in the TCP/IP stack.',
-  'Compare IPv4 and IPv6 addressing and headers. Why was IPv6 introduced?',
-  'A /24 network must be divided into at least six equal subnets. Determine the new prefix and usable hosts per subnet.',
-  'Explain classful addressing, classless addressing, CIDR, and VLSM with a suitable allocation example.',
-  'Compare distance-vector and link-state routing. Explain count-to-infinity and the role of Dijkstra’s algorithm.',
-  'Compare UDP and TCP headers and explain when an application should prefer each transport protocol.',
-  'Walk through TCP connection establishment, reliable delivery, flow control, and connection termination.',
-  'Explain TCP congestion control, including slow start, congestion avoidance, fast retransmit, and fast recovery.',
-  'A TCP sender has a congestion window of 16 MSS when loss is detected by timeout. What happens to cwnd and ssthresh under classic TCP congestion control?',
-  'Explain socket programming using the sequence of calls for a TCP server and a TCP client.',
-  'Compare DNS, SMTP, FTP, and HTTP by purpose, transport usage, and typical request-response behavior.',
-  'A GATE-style question asks which layer handles end-to-end reliability. Justify the answer and distinguish it from link-level reliability.',
-  'An interview asks why Ethernet uses a minimum frame size. Relate your answer to collision detection and propagation delay.',
-  'An objective exam gives a private IPv4 address and asks whether it is routable on the public Internet. Explain the role of NAT.',
-]
-
 const subjectHints: Record<string, string[]> = {
   'Computer Networks': ['layer', 'protocol', 'packet', 'frame', 'router', 'address', 'TCP', 'UDP', 'DNS', 'ARP'],
   'Data Structures & Algorithms': ['algorithm', 'complexity', 'data structure', 'tree', 'graph', 'sort'],
@@ -167,6 +151,49 @@ const subjectHints: Record<string, string[]> = {
   'Database Systems': ['database', 'query', 'table', 'transaction', 'index', 'SQL', 'normalization'],
   'Machine Learning & AI': ['model', 'training', 'data', 'feature', 'prediction', 'neural'],
   'Web Engineering': ['DOM', 'API', 'REST', 'security', 'performance', 'HTTP'],
+}
+
+const subjectQuestionPatterns: Record<string, Array<(topic: string, subject: string) => string>> = {
+  'Data Structures & Algorithms': [
+    (topic) => `Implement ${topic} and state its time and space complexity for the best, average, and worst cases.`,
+    (topic) => `Trace ${topic} on a small example input, showing every important intermediate state.`,
+    (topic) => `Compare ${topic} with an alternative data structure or algorithm and explain when each is preferable.`,
+    (topic) => `Identify an edge case that can break a ${topic} implementation and describe a robust fix.`,
+    (topic) => `Design a solution using ${topic}. Explain the invariant that proves your solution is correct.`,
+    (topic) => `Write an interview-style question about ${topic}, then explain the expected reasoning and answer.`,
+  ],
+  'Operating Systems': [
+    (topic) => `Explain how the kernel manages ${topic}, including the main data structures and system calls involved.`,
+    (topic) => `Compare two strategies used for ${topic}. Discuss throughput, fairness, latency, and overhead.`,
+    (topic) => `Trace a process or thread through a ${topic} scenario and identify each state transition.`,
+    (topic) => `Describe a failure caused by incorrect ${topic} handling and how an operating system prevents it.`,
+    (topic) => `Solve a numerical or scheduling problem involving ${topic}, showing each calculation.`,
+    (topic) => `Explain the security and isolation implications of ${topic} in a multi-user system.`,
+  ],
+  'Database Systems': [
+    (topic) => `Write and explain a SQL query that demonstrates ${topic}, including the expected result shape.`,
+    (topic) => `Compare two database designs or techniques for ${topic} and explain their performance trade-offs.`,
+    (topic) => `Trace how a database engine processes a request involving ${topic}, from parsing to execution.`,
+    (topic) => `Describe an integrity or concurrency bug involving ${topic} and give a database-level fix.`,
+    (topic) => `Design a schema or index for a workload involving ${topic}. Justify each choice.`,
+    (topic) => `Explain how ${topic} affects transactions, consistency, and recovery after a failure.`,
+  ],
+  'Machine Learning & AI': [
+    (topic) => `Explain the mathematical intuition behind ${topic} and define the key quantities involved.`,
+    (topic) => `Compare two approaches to ${topic} and state when each one generalizes better.`,
+    (topic) => `Design a small experiment to evaluate ${topic}. Include data preparation, metrics, and a baseline.`,
+    (topic) => `Diagnose a model failure involving ${topic} and propose a targeted improvement.`,
+    (topic) => `Work through a simple numerical example of ${topic}, showing the important calculation steps.`,
+    (topic) => `Discuss the risks of leakage, bias, or overfitting when applying ${topic} to real data.`,
+  ],
+  'Web Engineering': [
+    (topic) => `Design a browser-to-server flow that uses ${topic}, including the relevant HTTP requests and responses.`,
+    (topic) => `Compare two implementation choices for ${topic} and explain their security and performance trade-offs.`,
+    (topic) => `Debug a production failure involving ${topic}. List the evidence you would collect first.`,
+    (topic) => `Implement the core part of ${topic} and describe the expected behavior for an edge case.`,
+    (topic) => `Explain how ${topic} interacts with browsers, APIs, and persistence in a complete web application.`,
+    (topic) => `Write an interview-style question about ${topic}, then give a precise answer with a practical example.`,
+  ],
 }
 
 const questionBankQuestions = (subject: string, topic: string, rotation = 0) => {
@@ -182,12 +209,39 @@ const questionBankQuestions = (subject: string, topic: string, rotation = 0) => 
     return topicQuestions.map((_, index) => topicQuestions[(index + rotation) % topicQuestions.length])
   }
 
-  return [
-    `What is ${topic}, and why is it important when studying ${subject}?`,
-    `Walk through how ${topic} works in ${subject}. Include the key steps, components, or concepts involved.`,
-    `Describe a practical scenario where ${topic} is used in ${subject}. What trade-offs or common mistakes should you consider?`,
+  const patterns = subjectQuestionPatterns[subject] || [
+    (selectedTopic, selectedSubject) => `Explain ${selectedTopic} in ${selectedSubject}, including its purpose, core steps, and one practical example.`,
+    (selectedTopic, selectedSubject) => `Compare two approaches to ${selectedTopic} in ${selectedSubject} and explain their trade-offs.`,
+    (selectedTopic, selectedSubject) => `Diagnose a realistic failure involving ${selectedTopic} in ${selectedSubject} and propose a fix.`,
   ]
+  const questions = patterns.map((pattern) => pattern(topic, subject))
+  return questions.map((_, index) => questions[(index + rotation) % questions.length])
 }
+
+const generatedCourseQuestions: CuratedQuestion[] = subjects
+  .filter((subject) => subject.name !== 'Computer Networks')
+  .flatMap((subject) => questionBankQuestions(subject.name, subject.topics[0]).map((prompt, index) => ({
+    id: ({
+      CS201: ['61111111-1111-4111-8111-111111111111', '61111111-1111-4111-8111-111111111112', '61111111-1111-4111-8111-111111111113'],
+      CS302: ['62222222-2222-4222-8222-222222222221', '62222222-2222-4222-8222-222222222222', '62222222-2222-4222-8222-222222222223'],
+      CS303: ['63333333-3333-4333-8333-333333333331', '63333333-3333-4333-8333-333333333332', '63333333-3333-4333-8333-333333333333'],
+      AI401: ['64444444-4444-4444-8444-444444444441', '64444444-4444-4444-8444-444444444442', '64444444-4444-4444-8444-444444444443'],
+      CS204: ['65555555-5555-4555-8555-555555555551', '65555555-5555-4555-8555-555555555552', '65555555-5555-4555-8555-555555555553'],
+    } as Record<string, string[]>)[subject.code][index],
+    subject: subject.name,
+    branch: 'Computer Science',
+    semester: 'Current syllabus',
+    unit: subject.topics[0],
+    experiment: 'Course practice',
+    prompt,
+    answer: `A complete answer should define ${subject.topics[0]}, explain its main steps, and connect it to a practical ${subject.name} example.`,
+    explanation: `This question is specific to ${subject.name} and the ${subject.topics[0]} topic.`,
+    difficulty: index % 2 === 0 ? 'Medium' : 'Hard',
+    tags: [subject.code, subject.topics[0]],
+    source: `${subject.name} course question bank`,
+  })))
+
+const allQuestions = [...curatedQuestions, ...generatedCourseQuestions]
 
 function shuffle<T>(items: T[]) {
   return [...items].sort(() => Math.random() - 0.5)
@@ -225,7 +279,7 @@ type AppView = 'dashboard' | 'subjects' | 'subject-detail' | 'question-detail' |
 type PracticeAnswer = { selected?: string; text: string; correct: boolean; feedback?: string; unitMissing?: boolean }
 type PracticeAttempt = { id: string; date: string; score: number; total: number; weakTopics: string[]; mode: 'mcq' | 'short'; difficulty: Difficulty }
 type GeneratedQuestionType = 'short-answer' | 'conceptual' | 'mcq' | 'follow-up'
-type GeneratedQuestion = { question: string; type: GeneratedQuestionType; modelAnswer: string; rubric: string[] }
+type GeneratedQuestion = { id?: string; question: string; type: GeneratedQuestionType; modelAnswer: string; rubric: string[] }
 
 type NumericalCheck = { value: number; units: string[] }
 type PracticeBlueprint = {
@@ -239,14 +293,14 @@ type PracticeBlueprint = {
 
 const practiceBlueprints: PracticeBlueprint[] = [
   {
-    id: 'cn-tcp-handshake',
+    id: '11111111-1111-4111-8111-111111111111',
     mode: 'mcq' as const,
     prompt: 'Which sequence correctly describes TCP connection establishment?',
     options: ['SYN → SYN-ACK → ACK', 'ACK → SYN → SYN-ACK', 'SYN → ACK → FIN', 'FIN → FIN-ACK → ACK'],
     correct: 'SYN → SYN-ACK → ACK',
   },
   {
-    id: 'cn-subnetting',
+    id: '22222222-2222-4222-8222-222222222222',
     mode: 'short',
     numerical: [
       { value: 27, units: ['/', 'prefix', 'cidr'] },
@@ -254,19 +308,19 @@ const practiceBlueprints: PracticeBlueprint[] = [
     ],
   },
   {
-    id: 'cn-arq',
+    id: '33333333-3333-4333-8333-333333333333',
     mode: 'mcq' as const,
     prompt: 'Which ARQ protocol retransmits only the frames that are lost or damaged?',
     options: ['Stop-and-Wait ARQ', 'Go-Back-N ARQ', 'Selective Repeat ARQ', 'Pure ALOHA'],
     correct: 'Selective Repeat ARQ',
   },
   {
-    id: 'cn-shannon',
+    id: '44444444-4444-4444-8444-444444444444',
     mode: 'short',
     numerical: [{ value: 29.9, units: ['kbps', 'kilobit', 'kilobits'] }],
   },
   {
-    id: 'cn-dns',
+    id: '55555555-5555-4555-8555-555555555555',
     mode: 'mcq' as const,
     prompt: 'What happens during recursive DNS resolution?',
     options: [
@@ -289,6 +343,15 @@ function numericalAnswer(text: string, checks: NumericalCheck[]) {
   return missingUnit
     ? { correct: true, unitMissing: true, feedback: 'Correct numerical value. Add the unit to make your answer complete.' }
     : { correct: true, feedback: 'Correct numerical value and unit.' }
+}
+
+function fallbackMcqOptions(question: CuratedQuestion): string[] {
+  return [
+    question.answer,
+    `It is unrelated to ${question.unit} and cannot be used in ${question.subject}.`,
+    `It applies only to a different course and does not address ${question.unit}.`,
+    `It is a definition without any process, example, or technical reasoning.`,
+  ]
 }
 
 function loadAttempts(): PracticeAttempt[] {
@@ -346,13 +409,14 @@ async function generateWithGemini(request: string): Promise<GeneratedQuestion[]>
     return questions
 }
 
-function PracticePage({ questions, index, answers, timeRemaining, mode, difficulty, onAnswer, onNext, onFinish, onExit }: {
+function PracticePage({ questions, index, answers, timeRemaining, mode, difficulty, persistenceError, onAnswer, onNext, onFinish, onExit }: {
   questions: CuratedQuestion[]
   index: number
   answers: Record<string, PracticeAnswer>
   timeRemaining: number
   mode: 'mcq' | 'short'
   difficulty: Difficulty
+  persistenceError: string
   onAnswer: (answer: PracticeAnswer) => void
   onNext: () => void
   onFinish: () => void
@@ -360,7 +424,8 @@ function PracticePage({ questions, index, answers, timeRemaining, mode, difficul
 }) {
   const question = questions[index]
   const practiceMeta = practiceBlueprints.find((item) => item.id === question.id)
-  const mcqOptions = practiceMeta?.options
+  const mcqOptions = practiceMeta?.options ?? (mode === 'mcq' ? fallbackMcqOptions(question) : undefined)
+  const correctOption = practiceMeta?.correct ?? mcqOptions?.[0]
   const current = answers[question.id]
   const isLast = index === questions.length - 1
   const handleShortAnswer = (text: string) => {
@@ -373,16 +438,17 @@ function PracticePage({ questions, index, answers, timeRemaining, mode, difficul
     onAnswer({ text, ...numericalResult })
   }
   return <section className="workspace-page practice-page">
+    {persistenceError && <div className="empty-note" role="alert">{persistenceError}</div>}
     <div className="practice-session-header"><div><span className="eyebrow">Practice session · {difficulty}</span><h1>{mode === 'mcq' ? 'Concept check' : 'Short-answer practice'}</h1></div><button className="secondary-action" type="button" onClick={onExit}>Exit session</button></div>
     <div className="practice-progress-row"><span>Question {index + 1} of {questions.length}</span><div className="practice-progress"><span style={{ width: `${((index + 1) / questions.length) * 100}%` }} /></div><strong>{Math.floor(timeRemaining / 60)}:{String(timeRemaining % 60).padStart(2, '0')}</strong></div>
-    <article className="content-card practice-question-card"><div className="question-detail-meta"><span className="status-badge blue">{question.unit}</span><span className="muted-label">{question.difficulty} · {question.tags.join(' · ')}</span></div><h2>{mode === 'mcq' ? (practiceMeta?.prompt ?? question.prompt) : question.prompt}</h2>{mode === 'mcq' && mcqOptions ? <div className="mcq-options">{mcqOptions.map((option) => <button key={option} type="button" className={`mcq-option${current?.selected === option ? ' selected' : ''}`} onClick={() => onAnswer({ selected: option, text: option, correct: option === practiceMeta.correct, feedback: option === practiceMeta.correct ? 'Correct answer.' : 'That option is not correct.' })}><span>{String.fromCharCode(65 + mcqOptions.indexOf(option))}</span>{option}</button>)}</div> : <><textarea className="practice-answer-input" value={current?.text ?? ''} onChange={(event) => handleShortAnswer(event.target.value)} placeholder="Write your answer in your own words..." />{current?.feedback && <p className={`practice-answer-feedback${current.unitMissing ? ' unit-missing' : ''}`}>{current.feedback}</p>}</>}</article>
+    <article className="content-card practice-question-card"><div className="question-detail-meta"><span className="status-badge blue">{question.unit}</span><span className="muted-label">{question.difficulty} · {question.tags.join(' · ')}</span></div><h2>{mode === 'mcq' ? (practiceMeta?.prompt ?? `Which option best answers this question? ${question.prompt}`) : question.prompt}</h2>{mode === 'mcq' && mcqOptions ? <div className="mcq-options">{mcqOptions.map((option) => <button key={option} type="button" className={`mcq-option${current?.selected === option ? ' selected' : ''}`} onClick={() => onAnswer({ selected: option, text: option, correct: option === correctOption, feedback: option === correctOption ? 'Correct answer.' : 'That option is not correct.' })}><span>{String.fromCharCode(65 + mcqOptions.indexOf(option))}</span>{option}</button>)}</div> : <><textarea className="practice-answer-input" value={current?.text ?? ''} onChange={(event) => handleShortAnswer(event.target.value)} placeholder="Write your answer in your own words..." />{current?.feedback && <p className={`practice-answer-feedback${current.unitMissing ? ' unit-missing' : ''}`}>{current.feedback}</p>}</>}</article>
     <div className="practice-actions">{index > 0 && <button className="secondary-action" type="button" onClick={onNext}>Skip for now</button>}{isLast ? <button className="primary-action" type="button" onClick={onFinish}>Finish practice <Check size={16} /></button> : <button className="primary-action" type="button" onClick={onNext} disabled={!current}>Next question <ChevronRight size={16} /></button>}</div>
   </section>
 }
 
 function ResultsPage({ attempt, questions, answers, history, onStart, onReview, onBack }: { attempt: PracticeAttempt; questions: CuratedQuestion[]; answers: Record<string, PracticeAnswer>; history: PracticeAttempt[]; onStart: () => void; onReview: (id: string) => void; onBack: () => void }) {
   const incorrect = questions.filter((question) => !answers[question.id]?.correct)
-  return <section className="workspace-page results-page"><div className="page-heading"><div><span className="eyebrow">Practice complete</span><h1>Nice work. Review your result.</h1><p>Your attempt is saved locally and will remain available after refresh.</p></div><button className="primary-action" type="button" onClick={onStart}>Try another session <ChevronRight size={16} /></button></div><div className="results-grid"><article className="content-card score-card"><span className="eyebrow">Score</span><strong>{attempt.score}<small>/{attempt.total}</small></strong><span>{Math.round((attempt.score / attempt.total) * 100)}% correct</span></article><article className="content-card"><span className="eyebrow">Weak topics</span><div className="weak-topic-list">{(attempt.weakTopics.length ? attempt.weakTopics : ['No weak topics detected']).map((topic) => <span key={topic}>{topic}</span>)}</div></article></div><div className="results-section"><div className="card-section-heading"><h2>Review answers</h2><span className="muted-label">{incorrect.length} to revisit</span></div><div className="review-list">{questions.map((question) => <button key={question.id} type="button" className={`review-row ${answers[question.id]?.correct ? 'correct' : 'incorrect'}`} onClick={() => onReview(question.id)}><span>{answers[question.id]?.correct ? '✓' : '!'}</span><div><strong>{question.prompt}</strong><small>{question.unit}</small>{answers[question.id]?.feedback && <em>{answers[question.id].feedback}</em>}<em>Correct answer: {question.answer}</em><em>{question.explanation}</em></div><ChevronRight size={16} /></button>)}</div></div><div className="results-section"><div className="card-section-heading"><h2>Attempt history</h2><span className="muted-label">Saved on this device</span></div><div className="history-list">{history.slice(0, 5).map((item) => <div className="history-row" key={item.id}><span>{new Date(item.date).toLocaleDateString()}</span><strong>{item.score}/{item.total}</strong><span>{item.mode.toUpperCase()} · {item.difficulty}</span></div>)}</div><button className="page-back" type="button" onClick={onBack}><ArrowLeft size={16} /> Back to study space</button></div></section>
+  return <section className="workspace-page results-page"><div className="page-heading"><div><span className="eyebrow">Practice complete</span><h1>Nice work. Review your result.</h1><p>This result was calculated and saved by the server for your account.</p></div><button className="primary-action" type="button" onClick={onStart}>Try another session <ChevronRight size={16} /></button></div><div className="results-grid"><article className="content-card score-card"><span className="eyebrow">Score</span><strong>{attempt.score}<small>/{attempt.total}</small></strong><span>{Math.round((attempt.score / attempt.total) * 100)}% correct</span></article><article className="content-card"><span className="eyebrow">Weak topics</span><div className="weak-topic-list">{(attempt.weakTopics.length ? attempt.weakTopics : ['No weak topics detected']).map((topic) => <span key={topic}>{topic}</span>)}</div></article></div><div className="results-section"><div className="card-section-heading"><h2>Review answers</h2><span className="muted-label">{incorrect.length} to revisit</span></div><div className="review-list">{questions.map((question) => <button key={question.id} type="button" className={`review-row ${answers[question.id]?.correct ? 'correct' : 'incorrect'}`} onClick={() => onReview(question.id)}><span>{answers[question.id]?.correct ? '✓' : '!'}</span><div><strong>{question.prompt}</strong><small>{question.unit}</small>{answers[question.id]?.feedback && <em>{answers[question.id].feedback}</em>}<em>Correct answer: {question.answer}</em><em>{question.explanation}</em></div><ChevronRight size={16} /></button>)}</div></div><div className="results-section"><div className="card-section-heading"><h2>Attempt history</h2><span className="muted-label">Saved to your account</span></div><div className="history-list">{history.slice(0, 5).map((item) => <div className="history-row" key={item.id}><span>{new Date(item.date).toLocaleDateString()}</span><strong>{item.score}/{item.total}</strong><span>{item.mode.toUpperCase()} · {item.difficulty}</span></div>)}</div><button className="page-back" type="button" onClick={onBack}><ArrowLeft size={16} /> Back to study space</button></div></section>
 }
 
 interface StudyPageProps {
@@ -402,24 +468,30 @@ interface StudyPageProps {
   onOpenQuestion: (id?: string) => void
   onBack: () => void
   selectedSubject: string
+  metrics: LearningMetricsData
+  onToggleTopic: (code: string, topic: string) => void
 }
 
-function StudyPage({ subjects, page, searchTerm, setSearchTerm, onOpenSubject, onStartPractice, selectedQuestion, bookmarkedIds, revisedIds, onToggleBookmark, onToggleRevised, revealedAnswer, onToggleAnswer, onOpenQuestion, onBack, selectedSubject }: StudyPageProps) {
+function StudyPage({ subjects, page, searchTerm, setSearchTerm, onOpenSubject, onStartPractice, selectedQuestion, bookmarkedIds, revisedIds, onToggleBookmark, onToggleRevised, revealedAnswer, onToggleAnswer, onOpenQuestion, onBack, selectedSubject, metrics, onToggleTopic }: StudyPageProps) {
   const subject = subjects.find((item) => item.name === selectedSubject) ?? subjects[0]
   const [difficulty, setDifficulty] = useState<'All' | Difficulty>('All')
-  const filteredQuestions = curatedQuestions.filter((question) => {
+  const subjectQuestions = selectedSubject === 'bookmarks'
+    ? allQuestions
+    : allQuestions.filter((question) => question.subject === subject.name)
+  const filteredQuestions = subjectQuestions.filter((question) => {
     const searchable = `${question.prompt} ${question.answer} ${question.unit} ${question.tags.join(' ')}`.toLowerCase()
     return searchable.includes(searchTerm.toLowerCase()) && (difficulty === 'All' || question.difficulty === difficulty)
   })
   const filteredSubjects = subjects.filter((item) => `${item.name} ${item.desc} ${item.topics.join(' ')}`.toLowerCase().includes(searchTerm.toLowerCase()))
 
   if (page === 'subject-detail') {
+    const subProg = getSubjectProgress(metrics, subject.code)
     return (
       <section className="workspace-page">
         <button className="page-back" type="button" onClick={onBack}><ArrowLeft size={16} /> Back to subjects</button>
         <div className="page-heading">
           <div>
-            <span className="eyebrow">{subject.code} · Subject details</span>
+            <span className="eyebrow">{subject.code} · Syllabus details</span>
             <h1>{subject.name}</h1>
             <p>{subject.desc}</p>
           </div>
@@ -429,12 +501,42 @@ function StudyPage({ subjects, page, searchTerm, setSearchTerm, onOpenSubject, o
           <article className="content-card detail-overview">
             <div className={`card-icon ${subject.color}`}>{subject.icon}</div>
             <h2>Course overview</h2>
-            <p>Build confidence through focused explanations, numerical problems, and competitive-exam style questions.</p>
-            <div className="detail-stats"><span><strong>{subject.topics.length}</strong> learning tracks</span><span><strong>54</strong> practice prompts</span></div>
+            <p>Prep progress strictly reflects syllabus topics verified and completed. Click below to practice questions or mark topics studied.</p>
+            <div className="detail-stats">
+              <span><strong>{subProg.topicsCompletedCount} / {subject.topics.length}</strong> topics completed ({subProg.completionPct}%)</span>
+              <span><strong>{subProg.questionsAttempted}</strong> attempted</span>
+              <span><strong>{subProg.questionsCorrect}</strong> correct</span>
+            </div>
           </article>
           <article className="content-card">
-            <div className="card-section-heading"><h2>Topics to master</h2><span className="muted-label">Recommended path</span></div>
-            <div className="topic-list">{subject.topics.map((topic, index) => <button type="button" key={topic} onClick={() => onOpenQuestion(curatedQuestions[index % curatedQuestions.length].id)}><span className="topic-index">0{index + 1}</span><span>{topic}</span><ChevronRight size={16} /></button>)}</div>
+            <div className="card-section-heading"><h2>Syllabus topics to complete</h2><span className="muted-label">Actual syllabus tracks</span></div>
+            <div className="topic-list">
+              {subject.topics.map((topic, index) => {
+                const isCompleted = subProg.topicsCompleted.includes(topic)
+                return (
+                  <div key={topic} className="topic-item-row">
+                    <button
+                      type="button"
+                      className="topic-item-link"
+                      onClick={() => onOpenQuestion(subjectQuestions[index % subjectQuestions.length]?.id)}
+                    >
+                      <span className="topic-index">0{index + 1}</span>
+                      <span>{topic}</span>
+                      <ChevronRight size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className={`topic-complete-btn ${isCompleted ? 'completed' : ''}`}
+                      onClick={() => onToggleTopic(subject.code, topic)}
+                      title={isCompleted ? 'Mark topic as pending' : 'Mark topic as studied/completed'}
+                    >
+                      {isCompleted ? <Check size={13} /> : null}
+                      {isCompleted ? 'Completed' : 'Mark done'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
           </article>
         </div>
       </section>
@@ -459,9 +561,9 @@ function StudyPage({ subjects, page, searchTerm, setSearchTerm, onOpenSubject, o
     <section className="workspace-page">
       <div className="page-heading"><div><span className="eyebrow">{selectedSubject === 'bookmarks' ? 'Your study queue' : 'Explore your syllabus'}</span><h1>{selectedSubject === 'bookmarks' ? 'Bookmarked questions' : 'Subject explorer'}</h1><p>{selectedSubject === 'bookmarks' ? 'Return to saved questions and track what you have revised.' : 'Browse structured courses or search directly across the curated question bank.'}</p></div><button className="secondary-action" type="button" onClick={() => onOpenQuestion(filteredQuestions[0]?.id)}><Bookmark size={16} /> Open a question</button></div>
       <div className="explorer-toolbar"><label className="search-field"><Search size={17} /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search questions, units, tags, or subjects" /></label><select className="filter-button" value={difficulty} onChange={(event) => setDifficulty(event.target.value as 'All' | Difficulty)}><option value="All">All difficulties</option><option value="Easy">Easy</option><option value="Medium">Medium</option><option value="Hard">Hard</option></select><button className="filter-button" type="button"><SlidersHorizontal size={16} /> {filteredQuestions.length} questions</button></div>
-      {selectedSubject === 'bookmarks' ? <div className="question-bank-grid">{curatedQuestions.filter((question) => bookmarkedIds.has(question.id)).map((question) => <QuestionCard key={question.id} question={question} bookmarked={bookmarkedIds.has(question.id)} revised={revisedIds.has(question.id)} onOpenQuestion={onOpenQuestion} onToggleBookmark={onToggleBookmark} />)}</div> : <div className="explorer-grid">{filteredSubjects.map((item) => <button type="button" className="explorer-card" key={item.name} onClick={() => onOpenSubject(item.name)}><div className="explorer-card-top"><div className={`card-icon ${item.color}`}>{item.icon}</div><span className="card-code">{item.code}</span></div><h2>{item.name}</h2><p>{item.desc}</p><div className="explorer-card-footer"><span>{item.topics.length} learning tracks</span><ChevronRight size={17} /></div></button>)}</div>}
-      {selectedSubject === 'bookmarks' && !curatedQuestions.some((question) => bookmarkedIds.has(question.id)) && <div className="empty-note"><Bookmark size={24} /><strong>No bookmarks yet</strong><span>Open a question and save it to build your study queue.</span></div>}
-      {selectedSubject !== 'bookmarks' && <div className="question-bank-section"><div className="card-section-heading"><h2>Curated questions</h2><span className="muted-label">Computer Networks · CS301</span></div><div className="question-bank-grid">{filteredQuestions.map((question) => <QuestionCard key={question.id} question={question} bookmarked={bookmarkedIds.has(question.id)} revised={revisedIds.has(question.id)} onOpenQuestion={onOpenQuestion} onToggleBookmark={onToggleBookmark} />)}</div></div>}
+      {selectedSubject === 'bookmarks' ? <div className="question-bank-grid">{allQuestions.filter((question) => bookmarkedIds.has(question.id)).map((question) => <QuestionCard key={question.id} question={question} bookmarked={bookmarkedIds.has(question.id)} revised={revisedIds.has(question.id)} onOpenQuestion={onOpenQuestion} onToggleBookmark={onToggleBookmark} />)}</div> : <div className="explorer-grid">{filteredSubjects.map((item) => <button type="button" className="explorer-card" key={item.name} onClick={() => onOpenSubject(item.name)}><div className="explorer-card-top"><div className={`card-icon ${item.color}`}>{item.icon}</div><span className="card-code">{item.code}</span></div><h2>{item.name}</h2><p>{item.desc}</p><div className="explorer-card-footer"><span>{item.topics.length} learning tracks</span><ChevronRight size={17} /></div></button>)}</div>}
+      {selectedSubject === 'bookmarks' && !allQuestions.some((question) => bookmarkedIds.has(question.id)) && <div className="empty-note"><Bookmark size={24} /><strong>No bookmarks yet</strong><span>Open a question and save it to build your study queue.</span></div>}
+      {selectedSubject !== 'bookmarks' && <div className="question-bank-section"><div className="card-section-heading"><h2>{subject.name} questions</h2><span className="muted-label">{subject.code} · Course-specific bank</span></div><div className="question-bank-grid">{filteredQuestions.map((question) => <QuestionCard key={question.id} question={question} bookmarked={bookmarkedIds.has(question.id)} revised={revisedIds.has(question.id)} onOpenQuestion={onOpenQuestion} onToggleBookmark={onToggleBookmark} />)}</div></div>}
       {filteredQuestions.length === 0 && <div className="empty-note"><Compass size={24} /><strong>No questions found</strong><span>Try another search or difficulty.</span></div>}
     </section>
   )
@@ -471,9 +573,14 @@ function QuestionCard({ question, bookmarked, revised, onOpenQuestion, onToggleB
   return <article className="question-card"><button className="question-card-main" type="button" onClick={() => onOpenQuestion(question.id)}><div className="question-card-meta"><span className="status-badge blue">{question.difficulty}</span><span className="muted-label">{question.unit}</span></div><h3>{question.prompt}</h3><div className="question-card-tags">{question.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div><p>{question.source}</p></button><div className="question-card-footer"><button className={`icon-action ${bookmarked ? 'revised' : ''}`} type="button" onClick={() => onToggleBookmark(question.id)} aria-label="Bookmark question"><Bookmark size={16} fill={bookmarked ? 'currentColor' : 'none'} /></button><span>{revised ? 'Revised' : bookmarked ? 'Bookmarked' : 'Not revised'}</span></div></article>
 }
 
-function App() {
+function AppShell() {
+  const { displayName, signOut } = useAuth()
   const [activeView, setActiveView] = useState<AppView>('dashboard')
-  const [activeDialog, setActiveDialog] = useState<'viva' | 'key' | 'bank' | null>(null)
+  const [activeDialog, setActiveDialog] = useState<'viva' | 'key' | 'bank' | 'db' | null>(null)
+  const [dbCredentials, setDbCredentials] = useState(getSupabaseCredentials)
+  const [dbStatus, setDbStatus] = useState(getDatabaseSyncStatus)
+  const [dbSaveSuccess, setDbSaveSuccess] = useState(false)
+  const [studentUserId] = useState(getOrCreateUserId)
   const [selectedSubject, setSelectedSubject] = useState('Computer Networks')
   const [selectedBankSubject, setSelectedBankSubject] = useState('Computer Networks')
   const [selectedBankTopic, setSelectedBankTopic] = useState(subjects[0].topics[0])
@@ -493,7 +600,7 @@ function App() {
     commentary: string; action: string;
   } | null>(null)
   const [savedKey, setSavedKey] = useState(false)
-  const [candidateName, setCandidateName] = useState('Alex River')
+  const [candidateName, setCandidateName] = useState(displayName)
   const [selectedExaminer, setSelectedExaminer] = useState(0)
   const [voiceEnabled, setVoiceEnabled] = useState(true)
   const [showHint, setShowHint] = useState(false)
@@ -510,6 +617,8 @@ function App() {
   const [notificationIndex, setNotificationIndex] = useState(0)
   const [notificationsVisible, setNotificationsVisible] = useState(true)
   const [examQuestions, setExamQuestions] = useState<string[]>([])
+  const [vivaAttemptId, setVivaAttemptId] = useState<string | null>(null)
+  const [vivaPersistenceError, setVivaPersistenceError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedPageSubject, setSelectedPageSubject] = useState('Computer Networks')
   const [selectedQuestionId, setSelectedQuestionId] = useState(curatedQuestions[0].id)
@@ -524,6 +633,11 @@ function App() {
   const [practiceTime, setPracticeTime] = useState(300)
   const [lastAttempt, setLastAttempt] = useState<PracticeAttempt | null>(null)
   const [attemptHistory, setAttemptHistory] = useState<PracticeAttempt[]>(loadAttempts)
+  const [practiceAttemptId, setPracticeAttemptId] = useState<string | null>(null)
+  const [practicePersistenceError, setPracticePersistenceError] = useState('')
+  const [metrics, setMetrics] = useState<LearningMetricsData>(loadLearningMetrics)
+  const [leaderboard, setLeaderboard] = useState<Awaited<ReturnType<typeof fetchLeaderboard>> | null>(null)
+  const [vivaAnswers, setVivaAnswers] = useState<Record<number, string>>({})
 
   const currentPrompt = examQuestions[currentQuestion - 1] ?? questionTemplates[(currentQuestion - 1) % questionTemplates.length](selectedSubject)
   const currentGeneratedQuestion = generatedQuestions[currentQuestion - 1]
@@ -531,6 +645,28 @@ function App() {
   const bankSubjectData = subjects.find(s => s.name === selectedBankSubject)
   const bankQuestions = questionBankQuestions(selectedBankSubject, selectedBankTopic, bankRotation)
   const currentNotification = careerNotifications[notificationIndex]
+
+  useEffect(() => {
+    getOrCreateUserId()
+    let active = true
+    void Promise.all([fetchMetricsFromSupabase(), fetchLeaderboard(), fetchAssessmentHistory(selectedSubject)]).then(([remoteMetrics, remoteLeaderboard, remoteAttempts]) => {
+      if (!active) return
+      if (remoteMetrics) setMetrics(remoteMetrics)
+      setLeaderboard(remoteLeaderboard)
+      setAttemptHistory(remoteAttempts.map((item) => ({
+        id: item.attemptId,
+        date: item.submittedAt || new Date().toISOString(),
+        score: item.correctAnswers || 0,
+        total: item.totalQuestions,
+        weakTopics: [],
+        mode: 'mcq',
+        difficulty: 'Medium',
+      })))
+    })
+    return () => {
+      active = false
+    }
+  }, [selectedSubject])
 
   const closeDialog = () => setActiveDialog(null)
 
@@ -551,16 +687,66 @@ function App() {
     })
   }
 
+  const handleToggleTopic = (code: string, topic: string) => {
+    setMetrics((curr) => toggleTopicStudyCompletion(curr, code, topic))
+  }
+
+  const handleToggleRevised = (id: string) => {
+    const wasRevised = revisedIds.has(id)
+    toggleSetValue(setRevisedIds, id, 'vivabank-revised')
+    if (wasRevised) return
+    const q = allQuestions.find(item => item.id === id)
+    setMetrics((curr) => recordVerifiedQuestionAnswer(curr, {
+      subject: q?.subject || 'Computer Networks',
+      questionId: id,
+      topic: q?.unit,
+      isCorrect: true,
+      accuracy: 100,
+    }))
+  }
+
   const openCuratedQuestion = (id?: string) => {
     if (id) setSelectedQuestionId(id)
     setRevealedAnswer(false)
     navigate('question-detail')
   }
 
-  const startPractice = () => {
-    const eligible = curatedQuestions.filter((question) => practiceDifficulty === 'Medium' || question.difficulty === practiceDifficulty)
+  const startPractice = async () => {
+    const practicePool = allQuestions.filter((question) => question.subject === selectedSubject)
+    const eligible = practicePool.filter((question) => practiceDifficulty === 'Medium' || question.difficulty === practiceDifficulty)
+    const modePool = practicePool.filter((question) => practiceBlueprints.find((item) => item.id === question.id)?.mode === practiceMode)
     const modeEligible = eligible.filter((question) => practiceBlueprints.find((item) => item.id === question.id)?.mode === practiceMode)
-    const selected = shuffle(modeEligible.length >= 2 ? modeEligible : eligible.length >= 3 ? eligible : curatedQuestions).slice(0, 4)
+    const selected = shuffle(
+      practiceMode === 'mcq'
+        ? (modeEligible.length > 0 ? modeEligible : modePool)
+        : (modeEligible.length >= 2 ? modeEligible : eligible.length >= 3 ? eligible : practicePool)
+    ).slice(0, 4)
+    if (selected.length === 0) {
+      setPracticePersistenceError(`No ${practiceMode === 'mcq' ? 'multiple-choice' : 'short-answer'} questions are available for ${selectedSubject}.`)
+      return
+    }
+    setPracticePersistenceError('')
+    setPracticeAttemptId(null)
+    const selectedIdsAreServerBacked = selected.length > 0 && selected.every((question) => /^[0-9a-f-]{36}$/i.test(question.id))
+    if (selectedIdsAreServerBacked) {
+      try {
+        const subjectCode = subjects.find((subject) => subject.name === selectedSubject)?.code
+        if (!subjectCode) throw new Error('The selected subject is not configured.')
+        const started = await startAssessmentAttempt({
+          subjectCode,
+          assessmentType: 'quiz',
+          questionIds: selected.map((question) => question.id),
+          idempotencyKey: window.crypto.randomUUID(),
+        })
+        setPracticeAttemptId(started.attemptId)
+      } catch (error) {
+        setPracticePersistenceError(error instanceof Error ? error.message : 'Unable to start the server-backed practice attempt.')
+        return
+      }
+    } else {
+      setPracticePersistenceError('This question bank is not yet available for server-authoritative scoring.')
+      return
+    }
     setPracticeQuestions(selected)
     setPracticeIndex(0)
     setPracticeAnswers({})
@@ -568,16 +754,64 @@ function App() {
     navigate('practice-session')
   }
 
-  const finishPractice = useCallback(() => {
-    const correct = practiceQuestions.filter((question) => practiceAnswers[question.id]?.correct)
+  const finishPractice = useCallback(async () => {
+    if (!practiceAttemptId) {
+      setPracticePersistenceError('This practice attempt has no server record and cannot be submitted.')
+      return
+    }
+    let serverResult
+    try {
+      serverResult = await submitAssessmentAttempt({
+        attemptId: practiceAttemptId,
+        answers: practiceQuestions.map((question) => ({
+          questionId: question.id,
+          answer: practiceAnswers[question.id]?.text ?? '',
+        })),
+      })
+    } catch (error) {
+      setPracticePersistenceError(error instanceof Error ? error.message : 'Unable to submit the practice attempt. Please retry.')
+      return
+    }
+    try {
+      const persistedAnswers = await fetchAssessmentAnswers(serverResult.attemptId)
+      setPracticeAnswers((current) => {
+        const next = { ...current }
+        for (const persisted of persistedAnswers) {
+          next[persisted.questionId] = {
+            ...(next[persisted.questionId] || { text: persisted.submittedAnswer }),
+            text: persisted.submittedAnswer,
+            correct: persisted.isCorrect,
+          }
+        }
+        return next
+      })
+    } catch (error) {
+      setPracticePersistenceError(error instanceof Error ? error.message : 'The result was saved, but answer details could not be loaded.')
+    }
+    const serverCorrect = serverResult.correctAnswers ?? 0
     const weakTopics = practiceQuestions.filter((question) => !practiceAnswers[question.id]?.correct).map((question) => question.unit)
-    const attempt: PracticeAttempt = { id: String(Date.now()), date: new Date().toISOString(), score: correct.length, total: practiceQuestions.length, weakTopics: [...new Set(weakTopics)], mode: practiceMode, difficulty: practiceDifficulty }
+    const coveredTopics = practiceQuestions.map((q) => q.unit).filter(Boolean)
+    const attempt: PracticeAttempt = { id: serverResult.attemptId, date: serverResult.submittedAt || new Date().toISOString(), score: serverCorrect, total: serverResult.totalQuestions, weakTopics: [...new Set(weakTopics)], mode: practiceMode, difficulty: practiceDifficulty }
     const nextHistory = [attempt, ...attemptHistory]
     setLastAttempt(attempt)
     setAttemptHistory(nextHistory)
-    window.localStorage.setItem('vivabank-practice-attempts', JSON.stringify(nextHistory))
+
+    setMetrics((current) =>
+      recordVerifiedExam(current, {
+        subject: practiceQuestions[0]?.subject || 'Computer Networks',
+        type: 'practice',
+        score: serverCorrect,
+        total: serverResult.totalQuestions,
+        accuracy: serverResult.score ?? 0,
+        topicsCovered: coveredTopics,
+        mode: practiceMode,
+        difficulty: practiceDifficulty,
+        persistToSupabase: false,
+      })
+    )
+
     navigate('practice-results')
-  }, [attemptHistory, practiceAnswers, practiceDifficulty, practiceMode, practiceQuestions])
+  }, [attemptHistory, practiceAnswers, practiceAttemptId, practiceDifficulty, practiceMode, practiceQuestions])
 
   const selectBankSubject = (subjectName: string) => {
     const subject = subjects.find(s => s.name === subjectName)
@@ -604,18 +838,37 @@ function App() {
     setBankRotation((rotation) => rotation + 1)
   }
 
-  const startExam = () => {
-    const prompts = generatedQuestions.length > 0
-      ? generatedQuestions.map((item) => item.question).slice(0, questionCount)
-      : selectedSubject === 'Computer Networks'
-      ? shuffle(computerNetworksQuestions).slice(0, Math.max(questionCount, 7))
-      : shuffle(questionTemplates).map((template) => template(selectedSubject))
+  const startExam = async () => {
+    const selectedGenerated = generatedQuestions.slice(0, questionCount)
+    if (selectedGenerated.length === 0 || selectedGenerated.some((question) => !question.id)) {
+      setVivaPersistenceError('Generate and save AI viva questions before starting a secure persisted viva.')
+      return
+    }
+    const subjectCode = subjects.find((subject) => subject.name === selectedSubject)?.code
+    if (!subjectCode) {
+      setVivaPersistenceError('The selected subject is not configured.')
+      return
+    }
+    setVivaPersistenceError('')
+    try {
+      const started = await startVivaAssessment({
+        subjectCode,
+        questionIds: selectedGenerated.map((question) => question.id!),
+        idempotencyKey: window.crypto.randomUUID(),
+      })
+      setVivaAttemptId(started.attemptId)
+    } catch (error) {
+      setVivaPersistenceError(error instanceof Error ? error.message : 'Unable to start the secure viva attempt.')
+      return
+    }
+    const prompts = selectedGenerated.map((item) => item.question)
     setCurrentQuestion(1)
     setTimeRemaining(secondsPerQuestion)
     setExamComplete(false)
     setAnswer('')
     setFeedback(null)
     setShowHint(false)
+    setVivaAnswers({})
     setExamQuestions(prompts)
     setExamStarted(true)
     closeDialog()
@@ -628,7 +881,21 @@ function App() {
     const request = `Return only a JSON array. Generate ${Math.max(questionCount, 4)} ${vivaQuestionType} viva questions for ${syllabus}, unit ${vivaUnit}, experiment ${vivaExperiment}, difficulty ${vivaDifficulty}. Each object must contain question, type (${vivaQuestionType}), modelAnswer, and rubric (an array of at least 2 concrete scoring criteria). Stay within computer networking or the supplied syllabus. Do not invent prerequisites or facts.`
     try {
       const generated = await generateWithGemini(request)
-      setGeneratedQuestions(generated)
+      const savedQuestions = await saveGeneratedQuestions({
+        subjectCode: subjects.find((subject) => subject.name === selectedSubject)?.code || 'CS301',
+        topicName: vivaUnit,
+        sourceLabel: `${selectedSubject} · ${vivaExperiment}`,
+        questions: generated.map((question) => ({
+          prompt: question.question,
+          answer: question.modelAnswer,
+          rubric: question.rubric,
+          type: question.type,
+        })),
+      })
+      setGeneratedQuestions(generated.map((question, index) => ({
+        ...question,
+        id: savedQuestions[index]?.id,
+      })))
       setGenerationStatus('idle')
     } catch (error) {
       setGeneratedQuestions([])
@@ -637,10 +904,41 @@ function App() {
     }
   }
 
+  const submitVivaAttempt = useCallback(async () => {
+    if (!vivaAttemptId) {
+      setVivaPersistenceError('This viva has no server attempt and cannot be finalized.')
+      return
+    }
+    try {
+      const result = await submitAssessmentAttempt({
+        attemptId: vivaAttemptId,
+        answers: examQuestions.slice(0, questionCount).map((_, index) => ({
+          questionId: generatedQuestions[index]?.id || '',
+          answer: vivaAnswers[index] || '',
+        })),
+      })
+      setMetrics((curr) =>
+        recordVerifiedExam(curr, {
+          subject: selectedSubject,
+          type: 'viva',
+          score: result.correctAnswers || 0,
+          total: result.totalQuestions,
+          accuracy: result.score || 0,
+          topicsCovered: [vivaUnit].filter(Boolean),
+          persistToSupabase: false,
+        })
+      )
+      setVivaAttemptId(null)
+    } catch (error) {
+      setVivaPersistenceError(error instanceof Error ? error.message : 'Unable to finalize the viva. Please retry.')
+    }
+  }, [examQuestions, generatedQuestions, questionCount, selectedSubject, vivaAnswers, vivaAttemptId, vivaUnit])
+
   const nextQuestion = useCallback(() => {
     if (currentQuestion >= questionCount) {
       setExamStarted(false)
       setExamComplete(true)
+      void submitVivaAttempt()
       return
     }
     setCurrentQuestion((q) => q + 1)
@@ -648,9 +946,10 @@ function App() {
     setAnswer('')
     setFeedback(null)
     setShowHint(false)
-  }, [currentQuestion, questionCount, secondsPerQuestion])
+  }, [currentQuestion, questionCount, secondsPerQuestion, submitVivaAttempt])
 
   const checkAnswer = () => {
+    setVivaAnswers((current) => ({ ...current, [currentQuestion - 1]: answer }))
     const normalizedAnswer = answer.trim().toLowerCase()
     const hints = subjectHints[selectedSubject] ?? []
     const matchedHints = hints.filter((hint) => normalizedAnswer.includes(hint.toLowerCase()))
@@ -694,6 +993,7 @@ function App() {
   }
 
   const passQuestion = () => {
+    setVivaAnswers((current) => ({ ...current, [currentQuestion - 1]: '' }))
     setFeedback({
       title: 'Question skipped',
       correction: 'No answer was submitted, so this question will not receive a score.',
@@ -734,6 +1034,7 @@ function App() {
   }, [activeView, finishPractice, practiceQuestions.length])
 
   const overallScore = feedback ? Math.round((feedback.accuracy + feedback.depth + feedback.clarity) / 3) : 0
+  const overallProgress = getOverallSyllabusProgress(metrics)
 
   return (
     <main className={`app-shell ${theme === 'light' ? 'theme-light' : ''}`}>
@@ -749,7 +1050,14 @@ function App() {
           <button className={activeView === 'question-detail' || activeView === 'practice-session' || activeView === 'practice-results' ? 'active' : ''} type="button" onClick={() => { setPracticeQuestions([]); setActiveView('practice-session'); setActiveDialog(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }}><Compass size={17} /> Practice</button>
           <button className={activeView === 'bookmarks' ? 'active' : ''} type="button" onClick={() => navigate('bookmarks')}><Bookmark size={17} /> Bookmarks</button>
         </nav>
-        <div className="sidebar-footer"><span className="sidebar-label">Your progress</span><strong>62%</strong><div className="sidebar-progress"><span /></div><small>Keep your study streak going.</small></div>
+        <div className="sidebar-footer">
+          <span className="sidebar-label">Syllabus completion</span>
+          <strong>{overallProgress.completionPct}%</strong>
+          <div className="sidebar-progress">
+            <span style={{ width: `${overallProgress.completionPct}%` }} />
+          </div>
+          <small>{overallProgress.completedTopics} of {overallProgress.totalTopics} topics completed</small>
+        </div>
       </aside>
       {/* ── Top Bar ── */}
       <header className="topbar">
@@ -765,11 +1073,17 @@ function App() {
           >
             {theme === 'dark' ? '☀ Light' : '☾ Dark'}
           </button>
+          <button className="btn-setup-db" type="button" onClick={() => setActiveDialog('db')} title="Configure Supabase PostgreSQL database storage">
+            🗄️ Database <span className={`dot ${dbStatus.isConfigured ? 'active' : ''}`} />
+          </button>
           <button className="btn-setup-key" type="button" onClick={() => setActiveDialog('key')}>
             ⌕ Setup Gemini Key <span className={`dot ${savedKey ? 'active' : ''}`} />
           </button>
           <button className="btn-start-viva" type="button" onClick={() => setActiveDialog('viva')}>
             ▶ Start Viva
+          </button>
+          <button className="btn-theme-toggle" type="button" onClick={() => void signOut()}>
+            Sign out
           </button>
         </nav>
       </header>
@@ -822,19 +1136,28 @@ function App() {
       {/* ── Routed workspace ── */}
       {activeView === 'practice-session' && practiceQuestions.length === 0 ? (
         <section className="workspace-page practice-setup-page">
-          <div className="page-heading"><div><span className="eyebrow">Practice engine</span><h1>Build a focused session</h1><p>Choose a mode and difficulty. Questions are randomized from the curated Computer Networks bank.</p></div></div>
+          <div className="page-heading"><div><span className="eyebrow">Practice engine</span><h1>Build a focused session</h1><p>Choose a mode and difficulty. Questions are randomized from the selected course bank.</p></div></div>
           <div className="practice-setup-grid"><article className="content-card"><span className="eyebrow">Question mode</span><h2>How do you want to practice?</h2><div className="mode-options"><button type="button" className={practiceMode === 'mcq' ? 'selected' : ''} onClick={() => setPracticeMode('mcq')}><strong>Multiple choice</strong><span>Fast concept checks with instant scoring.</span></button><button type="button" className={practiceMode === 'short' ? 'selected' : ''} onClick={() => setPracticeMode('short')}><strong>Short answer</strong><span>Write explanations and test recall.</span></button></div></article><article className="content-card"><span className="eyebrow">Difficulty</span><h2>Set your challenge</h2><div className="difficulty-options">{(['Easy', 'Medium', 'Hard'] as Difficulty[]).map((level) => <button key={level} type="button" className={practiceDifficulty === level ? 'selected' : ''} onClick={() => setPracticeDifficulty(level)}>{level}</button>)}</div><button className="primary-action setup-start" type="button" onClick={startPractice}>Start randomized session <ChevronRight size={16} /></button></article></div>
         </section>
       ) : activeView === 'practice-session' ? (
-        <PracticePage questions={practiceQuestions} index={practiceIndex} answers={practiceAnswers} timeRemaining={practiceTime} mode={practiceMode} difficulty={practiceDifficulty} onAnswer={(answer) => setPracticeAnswers((current) => ({ ...current, [practiceQuestions[practiceIndex].id]: answer }))} onNext={() => setPracticeIndex((index) => Math.min(index + 1, practiceQuestions.length - 1))} onFinish={finishPractice} onExit={() => navigate('dashboard')} />
+        <PracticePage questions={practiceQuestions} index={practiceIndex} answers={practiceAnswers} timeRemaining={practiceTime} mode={practiceMode} difficulty={practiceDifficulty} persistenceError={practicePersistenceError} onAnswer={(answer) => setPracticeAnswers((current) => ({ ...current, [practiceQuestions[practiceIndex].id]: answer }))} onNext={() => setPracticeIndex((index) => Math.min(index + 1, practiceQuestions.length - 1))} onFinish={finishPractice} onExit={() => navigate('dashboard')} />
       ) : activeView === 'practice-results' && lastAttempt ? (
         <ResultsPage attempt={lastAttempt} questions={practiceQuestions} answers={practiceAnswers} history={attemptHistory} onStart={() => { setPracticeQuestions([]); navigate('practice-session') }} onReview={openCuratedQuestion} onBack={() => navigate('dashboard')} />
       ) : activeView === 'dashboard' ? (
-        <Dashboard
-          candidateName={candidateName}
-          onStartViva={(subject) => { setSelectedSubject(subject); setActiveDialog('viva') }}
-          onOpenQuestionBank={() => navigate('bookmarks')}
-        />
+        <Suspense fallback={<section className="workspace-page"><div className="empty-note">Loading your dashboard…</div></section>}>
+          <Dashboard
+            candidateName={candidateName}
+            metrics={metrics}
+            leaderboard={leaderboard}
+            onStartViva={(subject) => { setSelectedSubject(subject); setActiveDialog('viva') }}
+            onOpenQuestionBank={() => navigate('bookmarks')}
+            onOpenSubject={(subject) => {
+              setSelectedSubject(subject)
+              setSelectedPageSubject(subject)
+              navigate('subject-detail')
+            }}
+          />
+        </Suspense>
       ) : (
         <StudyPage
           subjects={subjects}
@@ -842,11 +1165,11 @@ function App() {
           onStartPractice={() => { setPracticeQuestions([]); navigate('practice-session') }}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
-          selectedQuestion={curatedQuestions.find((question) => question.id === selectedQuestionId) ?? curatedQuestions[0]}
+          selectedQuestion={allQuestions.find((question) => question.id === selectedQuestionId) ?? allQuestions[0]}
           bookmarkedIds={bookmarkedIds}
           revisedIds={revisedIds}
           onToggleBookmark={(id) => toggleSetValue(setBookmarkedIds, id, 'vivabank-bookmarks')}
-          onToggleRevised={(id) => toggleSetValue(setRevisedIds, id, 'vivabank-revised')}
+          onToggleRevised={handleToggleRevised}
           revealedAnswer={revealedAnswer}
           onToggleAnswer={() => setRevealedAnswer((value) => !value)}
           selectedSubject={activeView === 'bookmarks' ? 'bookmarks' : activeView === 'question-detail' ? 'question' : selectedPageSubject}
@@ -861,6 +1184,8 @@ function App() {
               setActiveDialog('viva')
             }
           }}
+          metrics={metrics}
+          onToggleTopic={handleToggleTopic}
         />
       )}
 
@@ -916,6 +1241,7 @@ function App() {
                 {currentGeneratedQuestion && <span className="ai-generated-badge">AI-generated · validated</span>}
                 <span className="candidate-name">Candidate: {candidateName}</span>
               </div>
+              {vivaPersistenceError && <div className="empty-note" role="alert">{vivaPersistenceError}</div>}
 
               <div className="question-text">{currentPrompt}</div>
 
@@ -1033,13 +1359,13 @@ function App() {
       {/* ── Configuration / API Key Dialog ── */}
       {activeDialog && (
         <div className="dialog-backdrop" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && closeDialog()}>
-          <section className={`dialog ${activeDialog === 'key' ? 'api-dialog' : activeDialog === 'bank' ? 'question-bank-dialog' : ''}`} role="dialog" aria-modal="true">
+          <section className={`dialog ${activeDialog === 'key' ? 'api-dialog' : activeDialog === 'bank' ? 'question-bank-dialog' : activeDialog === 'db' ? 'db-dialog' : ''}`} role="dialog" aria-modal="true">
             <button className="dialog-close" type="button" onClick={closeDialog}>×</button>
             {activeDialog === 'bank' ? (
               <>
                 <div className="dialog-icon">▣</div>
                 <h2 className="dialog-title">Question Bank</h2>
-                <p className="dialog-subtitle">Computer Networks questions include concepts, numericals, and competitive-exam patterns from the course syllabus.</p>
+                <p className="dialog-subtitle">Each course has its own topic-specific question prompts and practice patterns.</p>
 
                 <div className="question-bank-subjects" aria-label="Question bank subjects">
                   {subjects.map((subject) => (
@@ -1211,6 +1537,103 @@ function App() {
 
                 <button className="btn-begin-exam" type="button" onClick={startExam}>▶ Begin {generatedQuestions.length > 0 ? 'AI Viva' : 'Practical Viva Exam'}</button>
               </>
+            ) : activeDialog === 'db' ? (
+              <>
+                <div className="dialog-icon">🗄️</div>
+                <h2 className="dialog-title">Supabase Database Connection</h2>
+                <p className="dialog-subtitle">Store verified study events, question attempts, exam attempts, XP logs, and calendar streaks in PostgreSQL.</p>
+
+                <div className="field-group">
+                  <label className="field-label" htmlFor="supabase-project-url"><span className="icon">🔗</span> Supabase Project URL</label>
+                  <input
+                    id="supabase-project-url"
+                    className="text-input"
+                    type="text"
+                    value={dbCredentials.url}
+                    onChange={(e) => setDbCredentials((prev) => ({ ...prev, url: e.target.value }))}
+                    placeholder="https://xyzabcdefg.supabase.co"
+                  />
+                </div>
+
+                <div className="field-group">
+                  <label className="field-label" htmlFor="supabase-anon-key"><span className="icon">🔑</span> Supabase Anon Key</label>
+                  <input
+                    id="supabase-anon-key"
+                    className="text-input"
+                    type="password"
+                    value={dbCredentials.anonKey}
+                    onChange={(e) => setDbCredentials((prev) => ({ ...prev, anonKey: e.target.value }))}
+                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '12px' }}>
+                  <button
+                    className="btn-proceed"
+                    type="button"
+                    style={{ margin: 0 }}
+                    onClick={() => {
+                      saveSupabaseCredentials(dbCredentials.url, dbCredentials.anonKey)
+                      setDbStatus(getDatabaseSyncStatus())
+                      setDbSaveSuccess(true)
+                      setTimeout(() => setDbSaveSuccess(false), 2500)
+                    }}
+                  >
+                    {dbSaveSuccess ? '✓ Saved & Applied' : 'Save Connection Details'}
+                  </button>
+                  <span style={{ fontSize: '12px', color: dbStatus.isConfigured ? '#22c55e' : '#f59e0b', fontWeight: 600 }}>
+                    {dbStatus.isConfigured ? '● Supabase Active (Sync Enabled)' : '○ Local-First Mode (Offline Safe)'}
+                  </span>
+                </div>
+
+                <div className="field-group" style={{ marginTop: '14px' }}>
+                  <span className="field-label">Active User Session ID</span>
+                  <code style={{ background: 'rgba(255,255,255,0.06)', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', color: '#38bdf8' }}>
+                    {studentUserId}
+                  </code>
+                </div>
+
+                <div className="persona-section-label" style={{ marginTop: '14px' }}>PostgreSQL Database Tables</div>
+                <div className="db-dialog-grid">
+                  <div className="db-dialog-card">
+                    <h3><code>profiles</code></h3>
+                    <p>User ID and profile details (name, target exam, target year).</p>
+                  </div>
+                  <div className="db-dialog-card">
+                    <h3><code>subjects</code></h3>
+                    <p>Subject names, codes, credits, and syllabus structure.</p>
+                  </div>
+                  <div className="db-dialog-card">
+                    <h3><code>topic_progress</code></h3>
+                    <p>Completed syllabus topics and timestamps.</p>
+                  </div>
+                  <div className="db-dialog-card">
+                    <h3><code>question_attempts</code></h3>
+                    <p>Question ID, answer correctness, score, and attempt timestamp.</p>
+                  </div>
+                  <div className="db-dialog-card">
+                    <h3><code>exam_attempts</code></h3>
+                    <p>Score, total questions, subject, examiner persona, duration.</p>
+                  </div>
+                  <div className="db-dialog-card">
+                    <h3><code>xp_events</code></h3>
+                    <p>XP earned, verified reason, and exact timestamp.</p>
+                  </div>
+                  <div className="db-dialog-card" style={{ gridColumn: 'span 2' }}>
+                    <h3><code>daily_activity</code></h3>
+                    <p>One activity record per user per calendar day (questions answered, exams completed, minutes, XP).</p>
+                  </div>
+                </div>
+
+                <div className="db-formula-card">
+                  <strong>Active Metric Formulas (Consistent in DB & App):</strong>
+                  <div style={{ marginTop: '4px' }}>• <strong>Syllabus completion:</strong> (Completed syllabus topics / Total syllabus topics) × 100</div>
+                  <div>• <strong>Question accuracy:</strong> (Correct answers / Total answers) × 100</div>
+                  <div>• <strong>Weekly XP:</strong> Sum of verified XP events since Monday 00:00</div>
+                  <div>• <strong>Study streak:</strong> Consecutive qualifying study days (unchanged on idle days)</div>
+                  <div>• <strong>Exam Hub:</strong> Shows real attempts or &quot;Not attempted&quot;; best score updates only if higher</div>
+                </div>
+              </>
             ) : (
               <>
                 <div className="dialog-icon">🔑</div>
@@ -1230,4 +1653,12 @@ function App() {
   )
 }
 
-export default App
+export default function App() {
+  const { loading, user } = useAuth()
+  if (loading) {
+    return <div className="auth-loading" role="status">Restoring your secure session…</div>
+  }
+  return user
+    ? <AppShell />
+    : <Suspense fallback={<div className="auth-loading">Loading VivaBank…</div>}><AuthPage /></Suspense>
+}
